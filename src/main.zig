@@ -12,35 +12,50 @@ const gravity: bool = true;
 
 // get time to hit ground
 fn getTimeToGround(x: f64, v: f64) f64 {
-    if (v >= 0) return math.inf(f64);
     if (!gravity) {
+        // std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
+        std.debug.assert(x <= piston_x + 0.001);
+
+        if (v >= 0) return math.inf(f64);
         return -x / v;
     }
-    const a = 0.5 * g;
+    const a = -0.5 * g;
     const b = v;
     const c = x;
     const disc = b * b - 4 * a * c;
-    return (-b + math.sqrt(disc)) / (2 * a);
+    const t = (-b - math.sqrt(disc)) / (2 * a);
+    std.debug.assert(t > 0);
+    if (t <= 0) {
+        std.debug.print("x: {d}\tv: {d}\n", .{ x, v });
+        std.debug.print("t: {d}\n", .{t});
+        std.debug.print("UH\n", .{});
+    }
+    return t;
 }
 
 // get time to collide with piston
 fn getTimeToPiston(x: f64, v: f64) f64 {
     if (!gravity) {
-        const a = 0.5 * g;
-        const b = v - piston_v;
-        const c = x - piston_x;
+        // std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
+
+        std.debug.assert(x <= piston_x + 0.000001);
+
+        const a = -0.5 * g;
+        const b = piston_v - v;
+        const c = piston_x - x;
         const disc = b * b - 4 * a * c;
-        return (-b + math.sqrt(disc)) / (2 * a);
+        return (-b - math.sqrt(disc)) / (2 * a);
     }
-    // solve x(t) = piston_x(t)
-    // x(t) = x + v * t - 0.5 * g * t^2
-    // piston_x(t) = piston_x + piston_v * t - 0.5 * g * t^2
-    // x + v * t - 0.5 * g * t^2 = piston_x + piston_v * t - 0.5 * g * t^2
-    // x + v * t = piston_x + piston_v * t
-    // x - piston_x = piston_v * t - v * t
-    // x - piston_x = (piston_v - v) * t
-    // (x - piston_x) / (piston_v - v) = t
-    return (x - piston_x) / (piston_v - v);
+    const t = (x - piston_x) / (piston_v - v);
+    if (piston_v - v >= 0) return math.inf(f64);
+    // std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
+    if (t == 0) return math.inf(f64);
+    std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
+    std.debug.assert(x <= piston_x + 0.0001); // dbd
+    std.debug.print("v: {d}\tpiston_v: {d}\n", .{ v, piston_v });
+    std.debug.print("t: {d}\n", .{t});
+    std.debug.assert(t >= 0);
+    return t;
 }
 
 // compute velocities after elastic collision
@@ -95,9 +110,15 @@ pub fn main() !void {
 
     while (t < max_time) {
         ct += 1;
+        // std.debug.assert(ct < 5);
 
         // update progress indicator
-        const new_pct_done = @as(u8, @intFromFloat((t * 100) / max_time));
+        const frac_time = (t * 100) / max_time;
+        // std.debug.print("t: {d}\n", .{t});
+        // std.debug.print("frac_time: {d}\n", .{frac_time});
+        const int_frac_time = @as(u8, @intFromFloat(frac_time));
+
+        const new_pct_done = @as(u8, int_frac_time);
         if (new_pct_done > pct_done) {
             pct_done = new_pct_done;
             root_node.completeOne();
@@ -112,24 +133,45 @@ pub fn main() !void {
 
         for (0..n) |i| {
             const trial_t = @min(t_grounds[i], t_pistons[i]);
+            // std.debug.print("trial_t: {d}\n", .{trial_t}); // dbd
+            // std.debug.print("t_grounds[i]: {d}\n", .{t_grounds[i]}); // dbd
+            // std.debug.print("t_pistons[i]: {d}\n", .{t_pistons[i]}); // dbd
+            // std.debug.print("t: {d}\n", .{t}); // dbd
+            // std.debug.print("x: {d}\n", .{xs[i]}); // dbd
+            // std.debug.print("v: {d}\n", .{vs[i]}); // dbd
+            // std.debug.print("piston_x: {d}\n", .{piston_x}); // dbd
+            // std.debug.print("piston_v: {d}\n", .{piston_v}); // dbd
+
+            std.debug.assert(trial_t != 0);
             if (trial_t < dt) {
                 dt = trial_t;
                 j = i;
                 is_ground_col = t_grounds[i] < t_pistons[i];
             }
+            std.debug.assert(trial_t != 0);
         }
 
+        // std.debug.print("dt: {d}\tj: {}\tis_ground_col: {}\n", .{ dt, j, is_ground_col });
         // step forward in time
         for (0..n) |i| {
-            xs[i] += vs[i] * dt;
+            if (!gravity) {
+                xs[i] += vs[i] * dt;
+            } else {
+                xs[i] += vs[i] * dt - g * dt * dt / 2;
+            }
+
             t_grounds[i] -= dt;
         }
         piston_x += piston_v * dt - g * dt * dt / 2;
         piston_v -= g * dt;
         t += dt;
 
+        // std.debug.print("dt: {d}\tj: {}\tis_ground_col: {}\n", .{ dt, j, is_ground_col });
+
         if (is_ground_col) {
             // handle ground collision
+            // std.debug.print("j: {}\tvs[j]: {}\n", .{ j, vs[j] });
+            // std.debug.print("j: {}\t-vs[j]: {}\n", .{ j, -vs[j] });
             vs[j] = -vs[j];
             t_grounds[j] = math.inf(f64);
             for (0..n) |i| {
@@ -144,6 +186,14 @@ pub fn main() !void {
             t_grounds[j] = getTimeToGround(xs[j], vs[j]);
             for (0..n) |i| {
                 t_pistons[i] = getTimeToPiston(xs[i], vs[i]);
+                // std.debug.print("COMPUTING t_pistons[i]: {d}\n", .{t_pistons[i]});
+                // if (t_pistons[i] == 0) {
+                //     std.debug.print("i: {}\n", .{i});
+                //     std.debug.print("xs[i]: {d}\n", .{xs[i]});
+                //     std.debug.print("vs[i]: {d}\n", .{vs[i]});
+                //     std.debug.print("piston_x: {d}\n", .{piston_x});
+                //     std.debug.print("piston_v: {d}\n", .{piston_v});
+                // }
             }
         }
     }
