@@ -8,15 +8,6 @@ const m_piston = 1.0;
 var piston_x: f64 = 1;
 var piston_v: f64 = 0;
 
-const Particle = struct {
-    x: f64,
-    v: f64,
-    t_ground: f64,
-    t_piston: f64,
-};
-
-const ParticleList = std.MultiArrayList(Particle);
-
 // get time to hit ground
 fn tGround(x: f64, v: f64) f64 {
     if (v >= 0) return math.inf(f64);
@@ -50,34 +41,30 @@ pub fn main() !void {
     const n = try std.fmt.parseInt(u32, args[1], 0);
     const max_time = try std.fmt.parseFloat(f64, args[2]);
 
-    var particles = ParticleList{};
-    defer particles.deinit(allocator);
+    var particle_x = try allocator.alloc(f64, n);
+    var particle_v = try allocator.alloc(f64, n);
+    var time_to_ground = try allocator.alloc(f64, n);
+    var time_to_piston = try allocator.alloc(f64, n);
+    defer allocator.free(particle_x);
+    defer allocator.free(particle_v);
+    defer allocator.free(time_to_ground);
+    defer allocator.free(time_to_piston);
 
     const vAvg: f64 = 0.5 * math.sqrt(2 * m_piston * g * piston_x / m_particle / @as(f64, @floatFromInt(n)));
-    _ = vAvg;
 
-    var prng = std.rand.DefaultPrng.init(0);
-    const r = prng.random();
+    var prng = std.rand.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.os.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+    const rand = prng.random();
 
     for (0..n) |i| {
-        _ = i;
-        // TODO write this as init method
-        var p = Particle{
-            .x = piston_x * r.float(f64),
-            .v = 1,
-            .t_ground = undefined,
-            .t_piston = undefined,
-        };
-        p.t_ground = tGround(p.x, p.v);
-        p.t_piston = tPiston(p.x, p.v);
-        try particles.append(allocator, p);
+        particle_x[i] = piston_x * rand.float(f32);
+        particle_v[i] = vAvg;
+        time_to_ground[i] = tGround(particle_x[i], particle_v[i]);
+        time_to_piston[i] = tPiston(particle_x[i], particle_v[i]);
     }
-
-    var ps = particles.slice();
-    var xs = ps.items(.x);
-    var vs = ps.items(.v);
-    var t_gs = ps.items(.t_ground);
-    var t_ps = ps.items(.t_piston);
 
     // progress indicator
     var pct_done: u8 = 0;
@@ -88,7 +75,7 @@ pub fn main() !void {
     var t: f64 = 0;
     var ct: usize = 0; // collision count
 
-    // std.debug.print("Particles: {d}\tWorldtime: {d}s\n", .{ n, max_time });
+    std.debug.print("Particles: {d}\tWorldtime: {d}s\n", .{ n, max_time });
 
     while (t < max_time) {
         ct += 1;
@@ -107,47 +94,44 @@ pub fn main() !void {
         var j: usize = undefined;
         var is_ground_col: bool = true;
 
-        for (t_gs, t_ps, 0..n) |t_g, t_p, i| {
-            const trial_t = @min(t_g, t_p);
+        for (0..n) |i| {
+            const trial_t_ground = time_to_ground[i];
+            const trial_t_piston = time_to_piston[i];
+            const trial_t = @min(trial_t_ground, trial_t_piston);
             if (trial_t < dt) {
                 dt = trial_t;
                 j = i;
-                is_ground_col = t_g < t_p;
+                is_ground_col = trial_t_ground < trial_t_piston;
             }
         }
 
         // step forward in time
+        for (0..n) |i| {
+            particle_x[i] += particle_v[i] * dt;
+            time_to_ground[i] -= dt;
+        }
         piston_x += piston_v * dt - g * dt * dt / 2;
         piston_v -= g * dt;
         t += dt;
 
-        for (xs, vs, t_gs) |*x, v, *t_g| {
-            x.* += v * dt;
-            t_g.* -= dt;
-        }
-
-        var pj = ps.get(j);
         if (is_ground_col) {
             // handle ground collision
-            pj.v = -pj.v;
-            pj.t_ground = math.inf(f64);
-            for (t_ps) |*t_p| {
-                t_p.* -= dt;
+            particle_v[j] = -particle_v[j];
+            time_to_ground[j] = math.inf(f64);
+            for (0..n) |i| {
+                time_to_piston[i] -= dt;
             }
+            time_to_piston[j] = tPiston(particle_x[j], particle_v[j]);
         } else {
-
             // handle piston collision
-            const new_vs = elasticCol(m_particle, pj.v, m_piston, piston_v);
+            const new_vs = elasticCol(m_particle, particle_v[j], m_piston, piston_v);
+            particle_v[j] = new_vs.v1_prime;
             piston_v = new_vs.v2_prime;
-
-            pj.v = new_vs.v1_prime;
-            pj.t_ground = tGround(pj.x, pj.v);
-            pj.t_piston = tPiston(pj.x, pj.v);
-            for (t_ps, xs, vs) |*t_p, x, v| {
-                t_p.* = tPiston(x, v);
+            time_to_ground[j] = tGround(particle_x[j], particle_v[j]);
+            for (0..n) |i| {
+                time_to_piston[i] = tPiston(particle_x[i], particle_v[i]);
             }
         }
-        particles.set(j, pj);
     }
 
     const t1 = timer.read();
