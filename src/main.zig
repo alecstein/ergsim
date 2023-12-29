@@ -8,19 +8,39 @@ const m_piston = 1.0;
 var piston_x: f64 = 1;
 var piston_v: f64 = 0;
 
+const gravity: bool = true;
+
 // get time to hit ground
-fn tGround(x: f64, v: f64) f64 {
+fn getTimeToGround(x: f64, v: f64) f64 {
     if (v >= 0) return math.inf(f64);
-    return -x / v;
+    if (!gravity) {
+        return -x / v;
+    }
+    const a = 0.5 * g;
+    const b = v;
+    const c = x;
+    const disc = b * b - 4 * a * c;
+    return (-b + math.sqrt(disc)) / (2 * a);
 }
 
 // get time to collide with piston
-fn tPiston(x: f64, v: f64) f64 {
-    const a = 0.5 * g;
-    const b = v - piston_v;
-    const c = x - piston_x;
-    const disc = b * b - 4 * a * c;
-    return (-b + math.sqrt(disc)) / (2 * a);
+fn getTimeToPiston(x: f64, v: f64) f64 {
+    if (!gravity) {
+        const a = 0.5 * g;
+        const b = v - piston_v;
+        const c = x - piston_x;
+        const disc = b * b - 4 * a * c;
+        return (-b + math.sqrt(disc)) / (2 * a);
+    }
+    // solve x(t) = piston_x(t)
+    // x(t) = x + v * t - 0.5 * g * t^2
+    // piston_x(t) = piston_x + piston_v * t - 0.5 * g * t^2
+    // x + v * t - 0.5 * g * t^2 = piston_x + piston_v * t - 0.5 * g * t^2
+    // x + v * t = piston_x + piston_v * t
+    // x - piston_x = piston_v * t - v * t
+    // x - piston_x = (piston_v - v) * t
+    // (x - piston_x) / (piston_v - v) = t
+    return (x - piston_x) / (piston_v - v);
 }
 
 // compute velocities after elastic collision
@@ -41,29 +61,25 @@ pub fn main() !void {
     const n = try std.fmt.parseInt(u32, args[1], 0);
     const max_time = try std.fmt.parseFloat(f64, args[2]);
 
-    var particle_x = try allocator.alloc(f64, n);
-    var particle_v = try allocator.alloc(f64, n);
-    var time_to_ground = try allocator.alloc(f64, n);
-    var time_to_piston = try allocator.alloc(f64, n);
-    defer allocator.free(particle_x);
-    defer allocator.free(particle_v);
-    defer allocator.free(time_to_ground);
-    defer allocator.free(time_to_piston);
+    var xs = try allocator.alloc(f64, n);
+    defer allocator.free(xs);
+    var vs = try allocator.alloc(f64, n);
+    defer allocator.free(vs);
+    var t_grounds = try allocator.alloc(f64, n);
+    defer allocator.free(t_grounds);
+    var t_pistons = try allocator.alloc(f64, n);
+    defer allocator.free(t_pistons);
 
     const vAvg: f64 = 0.5 * math.sqrt(2 * m_piston * g * piston_x / m_particle / @as(f64, @floatFromInt(n)));
 
-    var prng = std.rand.DefaultPrng.init(blk: {
-        var seed: u64 = undefined;
-        try std.os.getrandom(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
+    var prng = std.rand.DefaultPrng.init(0);
     const rand = prng.random();
 
     for (0..n) |i| {
-        particle_x[i] = piston_x * rand.float(f32);
-        particle_v[i] = vAvg;
-        time_to_ground[i] = tGround(particle_x[i], particle_v[i]);
-        time_to_piston[i] = tPiston(particle_x[i], particle_v[i]);
+        xs[i] = piston_x * rand.float(f32);
+        vs[i] = vAvg;
+        t_grounds[i] = getTimeToGround(xs[i], vs[i]);
+        t_pistons[i] = getTimeToPiston(xs[i], vs[i]);
     }
 
     // progress indicator
@@ -95,20 +111,18 @@ pub fn main() !void {
         var is_ground_col: bool = true;
 
         for (0..n) |i| {
-            const trial_t_ground = time_to_ground[i];
-            const trial_t_piston = time_to_piston[i];
-            const trial_t = @min(trial_t_ground, trial_t_piston);
+            const trial_t = @min(t_grounds[i], t_pistons[i]);
             if (trial_t < dt) {
                 dt = trial_t;
                 j = i;
-                is_ground_col = trial_t_ground < trial_t_piston;
+                is_ground_col = t_grounds[i] < t_pistons[i];
             }
         }
 
         // step forward in time
         for (0..n) |i| {
-            particle_x[i] += particle_v[i] * dt;
-            time_to_ground[i] -= dt;
+            xs[i] += vs[i] * dt;
+            t_grounds[i] -= dt;
         }
         piston_x += piston_v * dt - g * dt * dt / 2;
         piston_v -= g * dt;
@@ -116,20 +130,20 @@ pub fn main() !void {
 
         if (is_ground_col) {
             // handle ground collision
-            particle_v[j] = -particle_v[j];
-            time_to_ground[j] = math.inf(f64);
+            vs[j] = -vs[j];
+            t_grounds[j] = math.inf(f64);
             for (0..n) |i| {
-                time_to_piston[i] -= dt;
+                t_pistons[i] -= dt;
             }
-            time_to_piston[j] = tPiston(particle_x[j], particle_v[j]);
+            t_pistons[j] = getTimeToPiston(xs[j], vs[j]);
         } else {
             // handle piston collision
-            const new_vs = elasticCol(m_particle, particle_v[j], m_piston, piston_v);
-            particle_v[j] = new_vs.v1_prime;
+            const new_vs = elasticCol(m_particle, vs[j], m_piston, piston_v);
+            vs[j] = new_vs.v1_prime;
             piston_v = new_vs.v2_prime;
-            time_to_ground[j] = tGround(particle_x[j], particle_v[j]);
+            t_grounds[j] = getTimeToGround(xs[j], vs[j]);
             for (0..n) |i| {
-                time_to_piston[i] = tPiston(particle_x[i], particle_v[i]);
+                t_pistons[i] = getTimeToPiston(xs[i], vs[i]);
             }
         }
     }
