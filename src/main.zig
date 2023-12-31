@@ -8,7 +8,7 @@ const m_piston = 1.0;
 var piston_x: f64 = 1;
 var piston_v: f64 = 0;
 
-const gravity: bool = false;
+const gravity: bool = true;
 
 // get time to hit ground
 fn getTimeToGround(x: f64, v: f64) f64 {
@@ -80,9 +80,10 @@ pub fn main() !void {
     }
 
     // progress indicator
+    const est_total_items = @as(usize, @intFromFloat(@divFloor(max_time, 10)));
     var pct_done: u8 = 0;
     var progress = std.Progress{};
-    const root_node = progress.start("Simulating", 100);
+    const root_node = progress.start("Simulating", est_total_items);
     defer root_node.end();
 
     var t: f64 = 0;
@@ -91,7 +92,7 @@ pub fn main() !void {
     std.debug.print("Particles: {d}\tWorldtime: {d}s\n", .{ n, max_time });
 
     var buf: [100]u8 = undefined;
-    const path = try std.fmt.bufPrint(&buf, "N_{d}_Time_{d}_out.txt", .{ n, max_time });
+    const path = try std.fmt.bufPrint(&buf, "N_{d}_Time_{d}_x.txt", .{ n, max_time });
 
     const file = try std.fs.cwd().createFile(
         path,
@@ -100,11 +101,20 @@ pub fn main() !void {
     defer file.close();
     var writer = file.writer();
 
+    var buf_2: [100]u8 = undefined;
+    const path_2 = try std.fmt.bufPrint(&buf_2, "N_{d}_Time_{d}_v.txt", .{ n, max_time });
+    const file_2 = try std.fs.cwd().createFile(
+        path_2,
+        .{ .read = true },
+    );
+    defer file_2.close();
+    var writer_2 = file_2.writer();
+
     while (t < max_time) {
         ct += 1;
 
         // update progress indicator
-        const frac_time = (t * 100) / max_time;
+        const frac_time = (t * @as(f64, @floatFromInt(est_total_items))) / max_time;
         const int_frac_time = @as(u8, @intFromFloat(frac_time));
 
         const new_pct_done = @as(u8, int_frac_time);
@@ -113,8 +123,12 @@ pub fn main() !void {
             root_node.completeOne();
             progress.refresh();
 
+            for (xs) |x| {
+                try std.fmt.format(writer, "{}\n", .{x});
+            }
+
             for (vs) |v| {
-                try std.fmt.format(writer, "{}\n", .{v});
+                try std.fmt.format(writer_2, "{}\n", .{v});
             }
         }
 
@@ -149,7 +163,11 @@ pub fn main() !void {
 
         if (is_ground_col) {
             vs[j] = -vs[j];
-            t_grounds[j] = math.inf(f64);
+            if (!gravity) {
+                t_grounds[j] = math.inf(f64);
+            } else {
+                t_grounds[j] = getTimeToGround(xs[j], vs[j]);
+            }
 
             for (0..n) |i| {
                 t_pistons[i] -= dt;
