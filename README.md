@@ -43,6 +43,6 @@ https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f
 
 ##### Dec. 30-31
 
-* Successfully (I think) added gravity to the simulation
-* Worked out some of the theory
+* Successfully (I think) added gravity to the particles in the simulation
+* Worked out some of the theory. Double factorials got me like !!
 * Updated the code to be a little cleaner -- removed file writing for now to make it easy for @josh to check for bugs
