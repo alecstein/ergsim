@@ -3,7 +3,7 @@ import matplotlib.animation as animation
 
 # Parse args from command line
 import argparse
-parser = argparse.ArgumentParser(description='Plot position distribution from output file')
+parser = argparse.ArgumentParser(description='Stitch histograms together')
 parser.add_argument('n', type=int, nargs=1, help='Number of particles')
 parser.add_argument('t', type=int, nargs=1, help='Number of timesteps')
 args = parser.parse_args()
