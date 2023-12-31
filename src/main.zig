@@ -8,14 +8,11 @@ const m_piston = 1.0;
 var piston_x: f64 = 1;
 var piston_v: f64 = 0;
 
-const gravity: bool = true;
+const gravity: bool = false;
 
 // get time to hit ground
 fn getTimeToGround(x: f64, v: f64) f64 {
     if (!gravity) {
-        // std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
-        std.debug.assert(x <= piston_x + 0.001);
-
         if (v >= 0) return math.inf(f64);
         return -x / v;
     }
@@ -24,22 +21,12 @@ fn getTimeToGround(x: f64, v: f64) f64 {
     const c = x;
     const disc = b * b - 4 * a * c;
     const t = (-b - math.sqrt(disc)) / (2 * a);
-    std.debug.assert(t > 0);
-    if (t <= 0) {
-        std.debug.print("x: {d}\tv: {d}\n", .{ x, v });
-        std.debug.print("t: {d}\n", .{t});
-        std.debug.print("UH\n", .{});
-    }
     return t;
 }
 
 // get time to collide with piston
 fn getTimeToPiston(x: f64, v: f64) f64 {
     if (!gravity) {
-        // std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
-
-        std.debug.assert(x <= piston_x + 0.000001);
-
         const a = -0.5 * g;
         const b = piston_v - v;
         const c = piston_x - x;
@@ -48,13 +35,7 @@ fn getTimeToPiston(x: f64, v: f64) f64 {
     }
     const t = (x - piston_x) / (piston_v - v);
     if (piston_v - v >= 0) return math.inf(f64);
-    // std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
     if (t == 0) return math.inf(f64);
-    std.debug.print("x: {d}\tpiston_x: {d}\n", .{ x, piston_x });
-    std.debug.assert(x <= piston_x + 0.0001); // dbd
-    std.debug.print("v: {d}\tpiston_v: {d}\n", .{ v, piston_v });
-    std.debug.print("t: {d}\n", .{t});
-    std.debug.assert(t >= 0);
     return t;
 }
 
@@ -86,13 +67,14 @@ pub fn main() !void {
     defer allocator.free(t_pistons);
 
     const vAvg: f64 = 0.5 * math.sqrt(2 * m_piston * g * piston_x / m_particle / @as(f64, @floatFromInt(n)));
+    _ = vAvg;
 
     var prng = std.rand.DefaultPrng.init(0);
     const rand = prng.random();
 
     for (0..n) |i| {
         xs[i] = piston_x * rand.float(f32);
-        vs[i] = vAvg;
+        vs[i] = 1;
         t_grounds[i] = getTimeToGround(xs[i], vs[i]);
         t_pistons[i] = getTimeToPiston(xs[i], vs[i]);
     }
@@ -108,14 +90,21 @@ pub fn main() !void {
 
     std.debug.print("Particles: {d}\tWorldtime: {d}s\n", .{ n, max_time });
 
+    var buf: [100]u8 = undefined;
+    const path = try std.fmt.bufPrint(&buf, "N_{d}_Time_{d}_out.txt", .{ n, max_time });
+
+    const file = try std.fs.cwd().createFile(
+        path,
+        .{ .read = true },
+    );
+    defer file.close();
+    var writer = file.writer();
+
     while (t < max_time) {
         ct += 1;
-        // std.debug.assert(ct < 5);
 
         // update progress indicator
         const frac_time = (t * 100) / max_time;
-        // std.debug.print("t: {d}\n", .{t});
-        // std.debug.print("frac_time: {d}\n", .{frac_time});
         const int_frac_time = @as(u8, @intFromFloat(frac_time));
 
         const new_pct_done = @as(u8, int_frac_time);
@@ -123,6 +112,10 @@ pub fn main() !void {
             pct_done = new_pct_done;
             root_node.completeOne();
             progress.refresh();
+
+            for (vs) |v| {
+                try std.fmt.format(writer, "{}\n", .{v});
+            }
         }
 
         // get the next interaction
@@ -133,67 +126,43 @@ pub fn main() !void {
 
         for (0..n) |i| {
             const trial_t = @min(t_grounds[i], t_pistons[i]);
-            // std.debug.print("trial_t: {d}\n", .{trial_t}); // dbd
-            // std.debug.print("t_grounds[i]: {d}\n", .{t_grounds[i]}); // dbd
-            // std.debug.print("t_pistons[i]: {d}\n", .{t_pistons[i]}); // dbd
-            // std.debug.print("t: {d}\n", .{t}); // dbd
-            // std.debug.print("x: {d}\n", .{xs[i]}); // dbd
-            // std.debug.print("v: {d}\n", .{vs[i]}); // dbd
-            // std.debug.print("piston_x: {d}\n", .{piston_x}); // dbd
-            // std.debug.print("piston_v: {d}\n", .{piston_v}); // dbd
-
-            std.debug.assert(trial_t != 0);
             if (trial_t < dt) {
                 dt = trial_t;
                 j = i;
                 is_ground_col = t_grounds[i] < t_pistons[i];
             }
-            std.debug.assert(trial_t != 0);
         }
 
-        // std.debug.print("dt: {d}\tj: {}\tis_ground_col: {}\n", .{ dt, j, is_ground_col });
         // step forward in time
         for (0..n) |i| {
             if (!gravity) {
                 xs[i] += vs[i] * dt;
             } else {
                 xs[i] += vs[i] * dt - g * dt * dt / 2;
+                vs[i] -= g * dt;
             }
-
             t_grounds[i] -= dt;
         }
         piston_x += piston_v * dt - g * dt * dt / 2;
         piston_v -= g * dt;
         t += dt;
 
-        // std.debug.print("dt: {d}\tj: {}\tis_ground_col: {}\n", .{ dt, j, is_ground_col });
-
         if (is_ground_col) {
-            // handle ground collision
-            // std.debug.print("j: {}\tvs[j]: {}\n", .{ j, vs[j] });
-            // std.debug.print("j: {}\t-vs[j]: {}\n", .{ j, -vs[j] });
             vs[j] = -vs[j];
             t_grounds[j] = math.inf(f64);
+
             for (0..n) |i| {
                 t_pistons[i] -= dt;
             }
+
             t_pistons[j] = getTimeToPiston(xs[j], vs[j]);
         } else {
-            // handle piston collision
             const new_vs = elasticCol(m_particle, vs[j], m_piston, piston_v);
             vs[j] = new_vs.v1_prime;
             piston_v = new_vs.v2_prime;
             t_grounds[j] = getTimeToGround(xs[j], vs[j]);
             for (0..n) |i| {
                 t_pistons[i] = getTimeToPiston(xs[i], vs[i]);
-                // std.debug.print("COMPUTING t_pistons[i]: {d}\n", .{t_pistons[i]});
-                // if (t_pistons[i] == 0) {
-                //     std.debug.print("i: {}\n", .{i});
-                //     std.debug.print("xs[i]: {d}\n", .{xs[i]});
-                //     std.debug.print("vs[i]: {d}\n", .{vs[i]});
-                //     std.debug.print("piston_x: {d}\n", .{piston_x});
-                //     std.debug.print("piston_v: {d}\n", .{piston_v});
-                // }
             }
         }
     }
