@@ -4,16 +4,19 @@ An event-driven simulation of an ideal gas in a box interacting with a movable p
 
 ### How to
 
-`python3 sim.py` will produce a histogram for the velocity distribution functions. Edit the script to change the parameters. 
-
-`sim.zig` does the same thing only faster. It will need to be compiled. If you don't have zig installed, do  `brew install zig`.  If you don't have brew installed, install it. 
+If you don't have zig installed, do  `brew install zig`.  If you don't have brew installed, install it. 
 
 Then do:
 
-`zig build-exe sim.zig -O ReleaseFast`
+`zig build`
 
-This will run the simulation but won't output anything. It's just a skeleton for producing outputs and can be modified as you need. To make a movie, run `sim_mov.zig` and then paste the output file's name into `movie.py`. You may need to adjust the histogram settings to get a nice view.
+This will run the simulation but won't output anything. It's just a skeleton for producing outputs and can be modified as you need.
 
+`./zig-out/bin/ergsim <number-of-particles> <time>`
+
+will run the simulation.
+
+I wrote some python code (not included) to make some histograms. These are with particle gravity turned off:
 
 https://github.com/alecstein/phys/assets/16236421/cc232826-662c-405e-bda4-f017c42fab71
 
