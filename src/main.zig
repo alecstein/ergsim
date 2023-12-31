@@ -93,22 +93,7 @@ pub fn main() !void {
 
     var buf: [100]u8 = undefined;
     const path = try std.fmt.bufPrint(&buf, "N_{d}_Time_{d}_x.txt", .{ n, max_time });
-
-    const file = try std.fs.cwd().createFile(
-        path,
-        .{ .read = true },
-    );
-    defer file.close();
-    var writer = file.writer();
-
-    var buf_2: [100]u8 = undefined;
-    const path_2 = try std.fmt.bufPrint(&buf_2, "N_{d}_Time_{d}_v.txt", .{ n, max_time });
-    const file_2 = try std.fs.cwd().createFile(
-        path_2,
-        .{ .read = true },
-    );
-    defer file_2.close();
-    var writer_2 = file_2.writer();
+    _ = path;
 
     while (t < max_time) {
         ct += 1;
@@ -122,14 +107,6 @@ pub fn main() !void {
             pct_done = new_pct_done;
             root_node.completeOne();
             progress.refresh();
-
-            for (xs) |x| {
-                try std.fmt.format(writer, "{}\n", .{x});
-            }
-
-            for (vs) |v| {
-                try std.fmt.format(writer_2, "{}\n", .{v});
-            }
         }
 
         // get the next interaction
