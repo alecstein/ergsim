@@ -55,22 +55,20 @@ pub fn main() !void {
         ct += 1;
 
         const int = getNextInteraction(cols);
-        const dt = int.dt;
-        const j = int.j;
-        const ground = int.is_ground_col;
+        const ground = int.col_type;
 
         // advance the particles forward
-        advanceSystem(dt, xs, vs);
+        advanceSystem(int.dt, xs, vs);
 
         if (ground) {
-            handleGroundCollision(j, dt, xs, vs, cols);
+            computeGroundCol(int.j, int.dt, xs, vs, cols);
         } else {
-            handlePistonCollision(j, dt, xs, vs, cols);
+            computePistCol(int.j, int.dt, xs, vs, cols);
         }
 
         updateProgress(root_node, &pct_done, t, max_time, est_total_items);
 
-        t += dt;
+        t += int.dt;
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -161,22 +159,22 @@ fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_pri
     return .{ .v1_prime = v1_prime, .v2_prime = v2_prime };
 }
 
-fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, is_ground_col: bool } {
+fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: bool } {
     // this is always O(N) time, so there's no prettier way to do it
     var dt = math.inf(f64);
     var j: usize = undefined;
-    var is_ground_col: bool = true;
+    var col_type: bool = true;
 
     for (cols, 0..) |c, i| {
         const trial_t = c.time;
         if (trial_t < dt) {
             dt = trial_t;
             j = i;
-            is_ground_col = c.type;
+            col_type = c.type;
         }
     }
 
-    return .{ .dt = dt, .j = j, .is_ground_col = is_ground_col };
+    return .{ .dt = dt, .j = j, .col_type = col_type };
 }
 
 fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
@@ -192,7 +190,7 @@ fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
     piston_v -= g * dt;
 }
 
-fn handleGroundCollision(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
+fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     // reverse the velocity of the colliding particle
     vs[j] = -vs[j];
 
@@ -215,7 +213,7 @@ fn handleGroundCollision(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) v
     }
 }
 
-fn handlePistonCollision(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
+fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     const new_vs = elasticCol(m_particle, vs[j], m_piston, piston_v);
     vs[j] = new_vs.v1_prime;
     piston_v = new_vs.v2_prime;
