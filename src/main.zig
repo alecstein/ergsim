@@ -53,8 +53,6 @@ pub fn main() !void {
     var ct: usize = 0; // collision count
 
     while (t < max_time) {
-        ct += 1;
-
         const next_col = getNextCollision(cols);
 
         advanceSystem(next_col.dt, xs, vs);
@@ -68,6 +66,7 @@ pub fn main() !void {
         updateProgress(root_node, &pct_done, t, max_time, est_total_items);
 
         t += next_col.dt;
+        ct += 1;
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
