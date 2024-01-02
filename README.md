@@ -4,17 +4,33 @@ An event-driven simulation of an ideal gas in a box interacting with a movable p
 
 ### How to
 
-If you don't have zig installed, do  `brew install zig`.  If you don't have brew installed, install it. 
+In a nutshell:
 
-Then do:
+1. Install homebrew
+2. Install zig
+3. Build the binary
+4. Run it
 
-`zig build -Drelease`
+If you don't have [homebrew](https://brew.sh) installed, install it by going to that page and running the install script:
 
-This will run the simulation but won't output anything. It's just a skeleton for producing outputs and can be modified as you need.
+```
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Then clone this repo and `cd` into the directory. In one stroke:
+
+```
+brew install zig
+git clone https://github.com/alecstein/ergsim.git
+cd ergsim
+zig build -Drelease
+```
+
+Then to run the simulation,
 
 `./zig-out/bin/ergsim <number-of-particles> <time>`
 
-will run the simulation. You can also run it without any arguments and it'll run its default.
+You can also run it without any arguments and it'll run its default.
 
 I wrote some python code (not included) to make some histograms. These are with particle gravity turned off:
 
