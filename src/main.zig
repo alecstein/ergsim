@@ -198,11 +198,11 @@ fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType
     var j: usize = undefined;
     var col_type: ColType = undefined;
 
-    for (cols, 0..) |c, i| {
+    for (cols, 0..) |c, k| {
         const trial_t = c.time;
         if (trial_t < dt) {
             dt = trial_t;
-            j = i;
+            j = k;
             col_type = c.type;
         }
     }
@@ -238,7 +238,6 @@ fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
         c.*.time -= dt;
     }
 
-    // update the next interaction for the particle that just collided with the ground
     if (!gravity) {
         // without gravity, the next collision is _always_ with the piston
         cols[j].time = math.inf(f64);
