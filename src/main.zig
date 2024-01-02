@@ -157,10 +157,10 @@ fn advanceXsVs(dt: f64, xs: []f64, vs: []f64) void {
 }
 
 fn computeGroundCol(j: usize, dt: f64, vs: []f64, cols: []Col) void {
-    // reverse the velocity of the colliding particle
     vs[j] = -vs[j];
 
-    // every collision gets dt closer
+    // Every collision gets advanced dt in time
+
     for (cols) |*c| {
         c.*.time -= dt;
     }
