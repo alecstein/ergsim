@@ -1,3 +1,6 @@
+// Simulates the case where the particles are operating under the
+// same gravitational field as the piston
+
 const std = @import("std");
 const math = std.math;
 const Allocator = std.mem.Allocator;

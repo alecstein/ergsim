@@ -14,7 +14,15 @@ This will run the simulation but won't output anything. It's just a skeleton for
 
 `./zig-out/bin/ergsim <number-of-particles> <time>`
 
-will run the simulation.
+will run the simulation. You can also run it without any arguments and it'll run its default.
+
+For whatever reason the `zig build` release mode is slower than it ought to be. So if you want the fast version do:
+
+```
+zig build-exe ./src/main.zig -O ReleaseFast
+```
+
+and you'll get the fast version in a file called `./main`. Same instructions apply as earlier.
 
 I wrote some python code (not included) to make some histograms. These are with particle gravity turned off:
 

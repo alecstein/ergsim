@@ -1,3 +1,5 @@
+// Simulates the case where the particles aren't affected by gravity
+
 const std = @import("std");
 const math = std.math;
 const Allocator = std.mem.Allocator;
