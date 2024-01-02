@@ -11,16 +11,27 @@ const m_particle = 0.001;
 const m_piston = 1.0;
 const default_n = 1000;
 const default_t = 1000.0;
-const gravity = false;
+const gravity = true;
 var piston_x: f64 = 1;
 var piston_v: f64 = 0;
 
+const ColType = enum {
+    ground,
+    piston,
+};
+
 const Col = struct {
     time: f64,
-    type: bool,
+    type: ColType,
 };
 
 pub fn main() !void {
+    // try tracer.init();
+    // defer tracer.deinit();
+
+    // try tracer.init_thread(std.fs.cwd());
+    // defer tracer.deinit_thread();
+
     var timer = try std.time.Timer.start();
     const t0 = timer.read();
 
@@ -33,14 +44,13 @@ pub fn main() !void {
     var xs = try alloc.alloc(f64, n);
     var vs = try alloc.alloc(f64, n);
     var cols = try alloc.alloc(Col, n);
-
     defer {
         alloc.free(xs);
         alloc.free(vs);
         alloc.free(cols);
     }
 
-    initializeArrays(n, &xs, &vs, &cols);
+    initArrays(xs, vs, cols);
 
     const est_total_items = @as(usize, @intFromFloat(@divFloor(max_time, 10)));
     var pct_done: u8 = 0;
@@ -51,16 +61,28 @@ pub fn main() !void {
     var t: f64 = 0;
     var ct: usize = 0; // collision count
 
+    // var filename: []const u8 = try std.fmt.allocPrint(
+    //     alloc,
+    //     "N_{d}_Time_{d}_x.txt",
+    //     .{ n, max_time },
+    // );
+
+    // const file = try std.fs.cwd().createFile(
+    //     filename,
+    //     .{ .read = true },
+    // );
+    // var writer = file.writer();
+    // defer file.close();
+
     while (t < max_time) {
         ct += 1;
 
         const int = getNextInteraction(cols);
-        const ground = int.col_type;
 
         // advance the particles forward
         advanceSystem(int.dt, xs, vs);
 
-        if (ground) {
+        if (int.col_type == ColType.ground) {
             computeGroundCol(int.j, int.dt, xs, vs, cols);
         } else {
             computePistCol(int.j, int.dt, xs, vs, cols);
@@ -69,6 +91,12 @@ pub fn main() !void {
         updateProgress(root_node, &pct_done, t, max_time, est_total_items);
 
         t += int.dt;
+
+        // if (ct % 10000 == 0) {
+        //     for (vs) |v| {
+        //         try std.fmt.format(writer, "{}\n", .{v});
+        //     }
+        // }
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -87,36 +115,37 @@ fn getArgs() !struct { n: u32, t: f64 } {
 }
 
 fn initVel() f64 {
-    //     const vAvg: f64 = 0.5 * math.sqrt(2 * m_piston * g * piston_x / m_particle / @as(f64, @floatFromInt(n)));
+    // const vAvg: f64 = 0.5 * math.sqrt(2 * m_piston * g * piston_x / m_particle / @as(f64, @floatFromInt(n)));
     const v = 1.0;
     return v;
 }
 
-fn initializeArrays(n: usize, xs: *[]f64, vs: *[]f64, cols: *[]Col) void {
+fn initArrays(xs: []f64, vs: []f64, cols: []Col) void {
     // without a seed, this will always produce the same sequence
     // this is good for debugging, but a more robust
     // solution might be better long-term.
     var prng = std.rand.DefaultPrng.init(0);
     const rand = prng.random();
 
-    for (0..n) |i| {
-        xs.*[i] = piston_x * rand.float(f32);
-        vs.*[i] = initVel();
+    for (xs, vs, cols) |*x, *v, *col| {
+        x.* = piston_x * rand.float(f32);
+        v.* = initVel();
 
-        const t_p = getTimeToPiston(xs.*[i], vs.*[i]);
-        const t_g = getTimeToGround(xs.*[i], vs.*[i]);
+        const t_p = getTimeToPiston(x.*, v.*);
+        const t_g = getTimeToGround(x.*, v.*);
+
         const c = Col{
             .time = @min(t_p, t_g),
-            .type = t_g < t_p,
+            .type = if (t_g < t_p) ColType.ground else ColType.piston,
         };
-        cols.*[i] = c;
+        col.* = c;
     }
 }
 
-// get time to hit ground
 fn getTimeToGround(x: f64, v: f64) f64 {
     // const t_ = tracer.trace(@src(), "getTimeToGround", .{});
     // defer t_.end();
+    @setFloatMode(.Optimized);
 
     if (!gravity) {
         if (v >= 0) return math.inf(f64);
@@ -130,10 +159,11 @@ fn getTimeToGround(x: f64, v: f64) f64 {
     return t;
 }
 
-// get time to collide with piston
 fn getTimeToPiston(x: f64, v: f64) f64 {
     // const t_ = tracer.trace(@src(), "getTimeToPiston", .{});
     // defer t_.end();
+
+    @setFloatMode(.Optimized);
 
     if (!gravity) {
         const a = -0.5 * g;
@@ -149,8 +179,9 @@ fn getTimeToPiston(x: f64, v: f64) f64 {
     return t;
 }
 
-// compute velocities after elastic collision
 fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_prime: f64 } {
+    // const t_ = tracer.trace(@src(), "elasticCol", .{});
+    // defer t_.end();
     // const t = tracer.trace(@src(), "elasticCol", .{});
     // defer t.end();
 
@@ -159,11 +190,13 @@ fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_pri
     return .{ .v1_prime = v1_prime, .v2_prime = v2_prime };
 }
 
-fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: bool } {
+fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType } {
+    // const t_ = tracer.trace(@src(), "getNext", .{});
+    // defer t_.end();
     // this is always O(N) time, so there's no prettier way to do it
     var dt = math.inf(f64);
     var j: usize = undefined;
-    var col_type: bool = true;
+    var col_type: ColType = undefined;
 
     for (cols, 0..) |c, i| {
         const trial_t = c.time;
@@ -178,19 +211,24 @@ fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: bool } 
 }
 
 fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
+    // const t_ = tracer.trace(@src(), "advanceSys", .{});
+    // defer t_.end();
+    piston_x += piston_v * dt - g * dt * dt / 2;
+    piston_v -= g * dt;
+
     for (xs, vs) |*x, *v| {
         if (!gravity) {
             x.* += v.* * dt;
         } else {
             x.* += v.* * dt - g * dt * dt / 2;
-            x.* -= g * dt;
+            v.* -= g * dt;
         }
     }
-    piston_x += piston_v * dt - g * dt * dt / 2;
-    piston_v -= g * dt;
 }
 
 fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
+    // const t_ = tracer.trace(@src(), "computeGroundCol", .{});
+    // defer t_.end();
     // reverse the velocity of the colliding particle
     vs[j] = -vs[j];
 
@@ -203,40 +241,41 @@ fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     if (!gravity) {
         // without gravity, the next collision is _always_ with the piston
         cols[j].time = math.inf(f64);
-        cols[j].type = false;
+        cols[j].type = ColType.piston;
     } else {
         // under gravity it could be either
-        const t_g = getTimeToGround(xs.*[j], vs.*[j]);
-        const t_p = getTimeToPiston(xs.*[j], vs.*[j]);
-        cols[j].time.* = @min(t_g, t_p);
-        cols[j].type.* = t_g < t_p;
+        const t_g = getTimeToGround(xs[j], vs[j]);
+        const t_p = getTimeToPiston(xs[j], vs[j]);
+        cols[j].time = @min(t_g, t_p);
+        cols[j].type = if (t_g < t_p) ColType.ground else ColType.piston;
     }
 }
 
 fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
-    const new_vs = elasticCol(m_particle, vs[j], m_piston, piston_v);
-    vs[j] = new_vs.v1_prime;
-    piston_v = new_vs.v2_prime;
-
+    // const t_ = tracer.trace(@src(), "computePistCol", .{});
+    // defer t_.end();
     // if a particle is going to hit the ground, there's no need to recompute its
     // collision time with the piston. A piston colliding with any particle is not
     // going to make the piston move downward faster.
 
+    const new_vs = elasticCol(m_particle, vs[j], m_piston, piston_v);
+    vs[j] = new_vs.v1_prime;
+    piston_v = new_vs.v2_prime;
+
     for (cols, 0..) |*c, i| {
-        // a ground collision is simple:
-        if (c.*.type == true) {
+        if (c.*.type == ColType.ground) {
             c.*.time -= dt;
         } else {
             const t_g = getTimeToGround(xs[i], vs[i]);
             const t_p = getTimeToPiston(xs[i], vs[i]);
             c.*.time = @min(t_g, t_p);
-            c.*.type = t_g < t_p;
+            c.*.type = if (t_g < t_p) ColType.ground else ColType.piston;
         }
     }
 }
 
 fn updateProgress(root_node: *std.Progress.Node, pct_done: *u8, t: f64, max_time: f64, est_total_items: usize) void {
-    // const t_ = tracer.trace(@src(), "updatProgress", .{});
+    // const t_ = tracer.trace(@src(), "updateProgress", .{});
     // defer t_.end();
     const frac_time = (t * @as(f64, @floatFromInt(est_total_items))) / max_time;
     const int_frac_time = @as(u8, @intFromFloat(frac_time));
