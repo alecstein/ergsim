@@ -210,12 +210,12 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     vs[j] = new_vs.v1_prime;
     piston_v = new_vs.v2_prime;
 
-    for (cols, 0..) |*c, i| {
+    for (cols, xs, vs) |*c, x, v| {
         if (c.*.type == ColType.ground) {
             c.*.time -= dt;
         } else {
-            const t_g = getTimeToGround(xs[i], vs[i]);
-            const t_p = getTimeToPiston(xs[i], vs[i]);
+            const t_g = getTimeToGround(x, v);
+            const t_p = getTimeToPiston(x, v);
             c.*.time = @min(t_g, t_p);
             c.*.type = if (t_g < t_p) ColType.ground else ColType.piston;
         }
