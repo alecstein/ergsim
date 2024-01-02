@@ -57,7 +57,7 @@ pub fn main() !void {
         advanceSystem(next_col.dt, xs, vs);
 
         if (next_col.type == ColType.ground) {
-            computeGroundCol(next_col.j, next_col.dt, vs, cols);
+            computeGroundCol(next_col.j, next_col.dt, xs, vs, cols);
         } else {
             computePistCol(next_col.j, next_col.dt, xs, vs, cols);
         }
@@ -111,16 +111,19 @@ fn initArrays(xs: []f64, vs: []f64, cols: []Col) void {
 }
 
 fn getTimeToGround(x: f64, v: f64) f64 {
-    if (v >= 0) return math.inf(f64);
-    return -x / v;
+    const a = -0.5 * g;
+    const b = v;
+    const c = x;
+    const disc = b * b - 4 * a * c;
+    const t = (-b - math.sqrt(disc)) / (2 * a);
+    return t;
 }
 
 fn getTimeToPiston(x: f64, v: f64) f64 {
-    const a = -0.5 * g;
-    const b = piston_v - v;
-    const c = piston_x - x;
-    const disc = b * b - 4 * a * c;
-    return (-b - math.sqrt(disc)) / (2 * a);
+    if (piston_v - v >= 0) return math.inf(f64);
+    const t = (x - piston_x) / (piston_v - v);
+    std.debug.assert(t >= 0);
+    return t;
 }
 
 fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_prime: f64 } {
@@ -153,11 +156,12 @@ fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
     piston_v -= g * dt;
 
     for (xs, vs) |*x, *v| {
-        x.* += v.* * dt;
+        x.* += v.* * dt - g * dt * dt / 2;
+        v.* -= g * dt;
     }
 }
 
-fn computeGroundCol(j: usize, dt: f64, vs: []f64, cols: []Col) void {
+fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     // reverse the velocity of the colliding particle
     vs[j] = -vs[j];
 
@@ -166,8 +170,11 @@ fn computeGroundCol(j: usize, dt: f64, vs: []f64, cols: []Col) void {
         c.*.time -= dt;
     }
 
-    cols[j].time = math.inf(f64);
-    cols[j].type = ColType.piston;
+    // under gravity it could be either
+    const t_g = getTimeToGround(xs[j], vs[j]);
+    const t_p = getTimeToPiston(xs[j], vs[j]);
+    cols[j].time = @min(t_g, t_p);
+    cols[j].type = if (t_g < t_p) ColType.ground else ColType.piston;
 }
 
 fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
