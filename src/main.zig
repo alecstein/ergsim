@@ -3,9 +3,6 @@ const math = std.math;
 const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
-// const tracer = @import("tracer");
-// pub const tracer_impl = tracer.spall;
-
 const g = 9.81;
 const m_particle = 0.001;
 const m_piston = 1.0;
@@ -26,12 +23,6 @@ const Col = struct {
 };
 
 pub fn main() !void {
-    // try tracer.init();
-    // defer tracer.deinit();
-
-    // try tracer.init_thread(std.fs.cwd());
-    // defer tracer.deinit_thread();
-
     var timer = try std.time.Timer.start();
     const t0 = timer.read();
 
@@ -61,19 +52,6 @@ pub fn main() !void {
     var t: f64 = 0;
     var ct: usize = 0; // collision count
 
-    // var filename: []const u8 = try std.fmt.allocPrint(
-    //     alloc,
-    //     "N_{d}_Time_{d}_x.txt",
-    //     .{ n, max_time },
-    // );
-
-    // const file = try std.fs.cwd().createFile(
-    //     filename,
-    //     .{ .read = true },
-    // );
-    // var writer = file.writer();
-    // defer file.close();
-
     while (t < max_time) {
         ct += 1;
 
@@ -91,12 +69,6 @@ pub fn main() !void {
         updateProgress(root_node, &pct_done, t, max_time, est_total_items);
 
         t += int.dt;
-
-        // if (ct % 10000 == 0) {
-        //     for (vs) |v| {
-        //         try std.fmt.format(writer, "{}\n", .{v});
-        //     }
-        // }
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -115,7 +87,6 @@ fn getArgs() !struct { n: u32, t: f64 } {
 }
 
 fn initVel() f64 {
-    // const vAvg: f64 = 0.5 * math.sqrt(2 * m_piston * g * piston_x / m_particle / @as(f64, @floatFromInt(n)));
     const v = 1.0;
     return v;
 }
@@ -143,11 +114,6 @@ fn initArrays(xs: []f64, vs: []f64, cols: []Col) void {
 }
 
 fn getTimeToGround(x: f64, v: f64) f64 {
-    // const t_ = tracer.trace(@src(), "getTimeToGround", .{});
-    // defer t_.end();
-
-    @setFloatMode(.Optimized);
-
     if (!gravity) {
         if (v >= 0) return math.inf(f64);
         return -x / v;
@@ -161,11 +127,6 @@ fn getTimeToGround(x: f64, v: f64) f64 {
 }
 
 fn getTimeToPiston(x: f64, v: f64) f64 {
-    // const t_ = tracer.trace(@src(), "getTimeToPiston", .{});
-    // defer t_.end();
-
-    @setFloatMode(.Optimized);
-
     if (!gravity) {
         const a = -0.5 * g;
         const b = piston_v - v;
@@ -181,18 +142,12 @@ fn getTimeToPiston(x: f64, v: f64) f64 {
 }
 
 fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_prime: f64 } {
-    // const t_ = tracer.trace(@src(), "elasticCol", .{});
-    // defer t_.end();
-
     const v1_prime = (m1 - m2) * v1 / (m1 + m2) + 2 * m2 * v2 / (m1 + m2);
     const v2_prime = 2 * m1 * v1 / (m1 + m2) - (m1 - m2) * v2 / (m1 + m2);
     return .{ .v1_prime = v1_prime, .v2_prime = v2_prime };
 }
 
 fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType } {
-    // const t_ = tracer.trace(@src(), "getNext", .{});
-    // defer t_.end();
-
     // this is always O(N) time, so there's no prettier way to do it
     var dt = math.inf(f64);
     var j: usize = undefined;
@@ -211,8 +166,6 @@ fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType
 }
 
 fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
-    // const t_ = tracer.trace(@src(), "advanceSys", .{});
-    // defer t_.end();
     piston_x += piston_v * dt - g * dt * dt / 2;
     piston_v -= g * dt;
 
@@ -227,9 +180,6 @@ fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
 }
 
 fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
-    // const t_ = tracer.trace(@src(), "computeGroundCol", .{});
-    // defer t_.end();
-
     // reverse the velocity of the colliding particle
     vs[j] = -vs[j];
 
@@ -252,9 +202,6 @@ fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
 }
 
 fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
-    // const t_ = tracer.trace(@src(), "computePistCol", .{});
-    // defer t_.end();
-
     // if a particle is going to hit the ground, there's no need to recompute its
     // collision time with the piston. A piston colliding with any particle is not
     // going to make the piston move downward faster.
@@ -276,9 +223,6 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
 }
 
 fn updateProgress(root_node: *std.Progress.Node, pct_done: *u8, t: f64, max_time: f64, est_total_items: usize) void {
-    // const t_ = tracer.trace(@src(), "updateProgress", .{});
-    // defer t_.end();
-
     const frac_time = (t * @as(f64, @floatFromInt(est_total_items))) / max_time;
     const int_frac_time = @as(u8, @intFromFloat(frac_time));
 
