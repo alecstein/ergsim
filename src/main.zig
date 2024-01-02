@@ -44,10 +44,9 @@ pub fn main() !void {
 
     initArrays(xs, vs, cols);
 
-    const est_total_items = @as(usize, @intFromFloat(@divFloor(max_time, 10)));
     var pct_done: u8 = 0;
     var progress = std.Progress{};
-    const root_node = progress.start("Simulating", est_total_items);
+    const root_node = progress.start("Simulating", 100);
     defer root_node.end();
 
     var t: f64 = 0;
@@ -67,10 +66,10 @@ pub fn main() !void {
             computePistCol(j, dt, xs, vs, cols);
         }
 
-        updateProgress(root_node, &pct_done, t, max_time, est_total_items);
-
         t += dt;
         ct += 1;
+
+        updateProgress(root_node, &pct_done, t, max_time);
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -207,11 +206,9 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     }
 }
 
-fn updateProgress(root_node: *std.Progress.Node, pct_done: *u8, t: f64, max_time: f64, est_total_items: usize) void {
-    const frac_time = (t * @as(f64, @floatFromInt(est_total_items))) / max_time;
-    const int_frac_time = @as(u8, @intFromFloat(frac_time));
-
-    const new_pct_done = @as(u8, int_frac_time);
+fn updateProgress(root_node: *std.Progress.Node, pct_done: *u8, t: f64, max_time: f64) void {
+    const frac_elapsed = @divFloor(100 * t, max_time);
+    const new_pct_done = @as(u8, @intFromFloat(frac_elapsed));
     if (new_pct_done > pct_done.*) {
         pct_done.* = new_pct_done;
         root_node.completeOne();

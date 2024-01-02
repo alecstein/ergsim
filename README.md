@@ -30,7 +30,11 @@ Then to run the simulation,
 
 `./zig-out/bin/ergsim <number-of-particles> <time>`
 
-You can also run it without any arguments and it'll run its default.
+You can also run it without any arguments and it'll run its default. To run the sim with gravity, do
+
+`./zig-out/bin/ergsim_grav <number-of-particles> <time>`
+
+Right now the code doesn't output anything -- it just runs. I've intentionally limited the scope of what the code on GitHub does to keep it simple for reviewing.
 
 I wrote some python code (not included) to make some histograms. These are with particle gravity turned off:
 
@@ -62,3 +66,8 @@ https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f
 * Successfully (I think) added gravity to the particles in the simulation
 * Worked out some of the theory. Double factorials got me like !!
 * Updated the code to be a little cleaner -- removed file writing for now to make it easy for @josh to check for bugs
+
+##### Jan. 1
+
+* Worked out some more optimizations
+* A good way of unit testing to write code that you're sure is correct, count the collisions (for fixed initial conditions), then do the same thing for your optimized code. If the counts are the same, then you're probably ok. The counts will not be exactly the same due to floating point errors -- sometimes, collision times can vary in the 10th decimal place or so between optimizations. This shouldn't matter too much
