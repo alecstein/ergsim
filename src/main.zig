@@ -62,7 +62,7 @@ pub fn main() !void {
         advanceXsVs(next_col.dt, xs, vs);
 
         if (col_type == ColType.ground) {
-            computeGroundCol(j, dt, vs, cols);
+            computeGroundCol(j, dt, xs, vs, cols);
         } else {
             computePistCol(j, dt, xs, vs, cols);
         }
@@ -161,16 +161,16 @@ fn advanceXsVs(dt: f64, xs: []f64, vs: []f64) void {
     }
 }
 
-fn computeGroundCol(j: usize, dt: f64, vs: []f64, cols: []Col) void {
+fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     vs[j] = -vs[j];
 
-    // Every collision gets advanced dt in time
-
+    // Ground collisions don't affect the collision times of other particles
+    // Every collision gets advanced forward by dt
     for (cols) |*c| {
         c.*.time -= dt;
     }
 
-    cols[j].time = math.inf(f64);
+    cols[j].time = getTimeToPiston(xs[j], vs[j]);
     cols[j].type = ColType.piston;
 }
 
@@ -185,11 +185,20 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     // Another particle hitting the piston will only slow it down. So
     // any particles that would hit the ground before this collision will
     // still hit the ground after it.
+    std.debug.assert(new_vs.v2_prime >= piston_v);
 
     for (cols, xs, vs) |*c, x, v| {
         if (c.*.type == ColType.ground) {
             c.*.time -= dt;
+        } else if (v > 0) {
+            // If the particles are traveling upwards (and not subject to gravity)
+            // they'll never hit the ground
+            c.*.time = getTimeToPiston(x, v);
+            c.*.type = ColType.piston;
         } else {
+            // This is for those cases where the particles are traveling downward,
+            // but still are scheduled to get hit by the piston. These are the
+            // ambiguous cases we need to solve
             const t_g = getTimeToGround(x, v);
             const t_p = getTimeToPiston(x, v);
             c.*.time = @min(t_g, t_p);

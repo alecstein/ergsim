@@ -168,7 +168,8 @@ fn advanceXsVs(dt: f64, xs: []f64, vs: []f64) void {
 fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     vs[j] = -vs[j];
 
-    // Every collision gets advanced dt in time
+    // Ground collisions don't affect the collision times of other particles
+    // Every collision gets advanced forward by dt
     for (cols) |*c| {
         c.*.time -= dt;
     }
@@ -190,10 +191,15 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     // Another particle hitting the piston will only slow it down. So
     // any particles that would hit the ground before this collision will
     // still hit the ground after it.
+    std.debug.assert(new_vs.v2_prime >= piston_v);
 
     for (cols, xs, vs) |*c, x, v| {
         if (c.*.type == ColType.ground) {
             c.*.time -= dt;
+        } else if (piston_v - v >= 0) {
+            // This particle will never hit the piston
+            c.*.time = getTimeToGround(x, v);
+            c.*.type = ColType.ground;
         } else {
             const t_g = getTimeToGround(x, v);
             const t_p = getTimeToPiston(x, v);
