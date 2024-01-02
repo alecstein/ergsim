@@ -145,6 +145,7 @@ fn initArrays(xs: []f64, vs: []f64, cols: []Col) void {
 fn getTimeToGround(x: f64, v: f64) f64 {
     // const t_ = tracer.trace(@src(), "getTimeToGround", .{});
     // defer t_.end();
+
     @setFloatMode(.Optimized);
 
     if (!gravity) {
@@ -182,8 +183,6 @@ fn getTimeToPiston(x: f64, v: f64) f64 {
 fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_prime: f64 } {
     // const t_ = tracer.trace(@src(), "elasticCol", .{});
     // defer t_.end();
-    // const t = tracer.trace(@src(), "elasticCol", .{});
-    // defer t.end();
 
     const v1_prime = (m1 - m2) * v1 / (m1 + m2) + 2 * m2 * v2 / (m1 + m2);
     const v2_prime = 2 * m1 * v1 / (m1 + m2) - (m1 - m2) * v2 / (m1 + m2);
@@ -193,6 +192,7 @@ fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_pri
 fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType } {
     // const t_ = tracer.trace(@src(), "getNext", .{});
     // defer t_.end();
+
     // this is always O(N) time, so there's no prettier way to do it
     var dt = math.inf(f64);
     var j: usize = undefined;
@@ -229,6 +229,7 @@ fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
 fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     // const t_ = tracer.trace(@src(), "computeGroundCol", .{});
     // defer t_.end();
+
     // reverse the velocity of the colliding particle
     vs[j] = -vs[j];
 
@@ -254,6 +255,7 @@ fn computeGroundCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
 fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     // const t_ = tracer.trace(@src(), "computePistCol", .{});
     // defer t_.end();
+
     // if a particle is going to hit the ground, there's no need to recompute its
     // collision time with the piston. A piston colliding with any particle is not
     // going to make the piston move downward faster.
@@ -277,6 +279,7 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
 fn updateProgress(root_node: *std.Progress.Node, pct_done: *u8, t: f64, max_time: f64, est_total_items: usize) void {
     // const t_ = tracer.trace(@src(), "updateProgress", .{});
     // defer t_.end();
+
     const frac_time = (t * @as(f64, @floatFromInt(est_total_items))) / max_time;
     const int_frac_time = @as(u8, @intFromFloat(frac_time));
 
