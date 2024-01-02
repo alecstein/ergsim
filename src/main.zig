@@ -8,7 +8,7 @@ const m_particle = 0.001;
 const m_piston = 1.0;
 const default_n = 1000;
 const default_t = 1000.0;
-const gravity = true;
+const gravity = false;
 var piston_x: f64 = 1;
 var piston_v: f64 = 0;
 
