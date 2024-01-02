@@ -55,20 +55,19 @@ pub fn main() !void {
     while (t < max_time) {
         ct += 1;
 
-        const int = getNextInteraction(cols);
+        const next_col = getNextCollision(cols);
 
-        // advance the particles forward
-        advanceSystem(int.dt, xs, vs);
+        advanceSystem(next_col.dt, xs, vs);
 
-        if (int.col_type == ColType.ground) {
-            computeGroundCol(int.j, int.dt, xs, vs, cols);
+        if (next_col.type == ColType.ground) {
+            computeGroundCol(next_col.j, next_col.dt, xs, vs, cols);
         } else {
-            computePistCol(int.j, int.dt, xs, vs, cols);
+            computePistCol(next_col.j, next_col.dt, xs, vs, cols);
         }
 
         updateProgress(root_node, &pct_done, t, max_time, est_total_items);
 
-        t += int.dt;
+        t += next_col.dt;
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -147,8 +146,9 @@ fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_pri
     return .{ .v1_prime = v1_prime, .v2_prime = v2_prime };
 }
 
-fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType } {
+fn getNextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
     // this is always O(N) time, so there's no prettier way to do it
+    // "j" is the index of the colliding particle
     var dt = math.inf(f64);
     var j: usize = undefined;
     var col_type: ColType = undefined;
@@ -162,7 +162,7 @@ fn getNextInteraction(cols: []Col) struct { dt: f64, j: usize, col_type: ColType
         }
     }
 
-    return .{ .dt = dt, .j = j, .col_type = col_type };
+    return .{ .dt = dt, .j = j, .type = col_type };
 }
 
 fn advanceSystem(dt: f64, xs: []f64, vs: []f64) void {
