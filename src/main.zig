@@ -44,7 +44,7 @@ pub fn main() !void {
 
     initArrays(xs, vs, cols);
 
-    var pct_done: u8 = 0;
+    var pct_elapsed: u8 = 0;
     var progress = std.Progress{};
     const root_node = progress.start("Simulating", 100);
     defer root_node.end();
@@ -69,11 +69,12 @@ pub fn main() !void {
         t += dt;
         ct += 1;
 
-        updateProgress(root_node, &pct_done, t, max_time);
+        updateProgress(root_node, &pct_elapsed, t, max_time);
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
-    std.debug.print("\nCollisions: {}\n", .{ct});
+    std.debug.print("\x1b[2K\x1b[0G", .{}); // clear the line of updates
+    std.debug.print("Collisions: {}\n", .{ct});
     std.debug.print("Time taken: {d:.2}s\n", .{time_taken / 1000000000.0});
 }
 
@@ -206,11 +207,11 @@ fn computePistCol(j: usize, dt: f64, xs: []f64, vs: []f64, cols: []Col) void {
     }
 }
 
-fn updateProgress(root_node: *std.Progress.Node, pct_done: *u8, t: f64, max_time: f64) void {
-    const frac_elapsed = @divFloor(100 * t, max_time);
-    const new_pct_done = @as(u8, @intFromFloat(frac_elapsed));
-    if (new_pct_done > pct_done.*) {
-        pct_done.* = new_pct_done;
+fn updateProgress(root_node: *std.Progress.Node, pct_elapsed: *u8, t: f64, max_time: f64) void {
+    const new_pct_elapsed = 100 * t / max_time;
+    const int_pct_elapsed = @as(u8, @intFromFloat(new_pct_elapsed));
+    if (int_pct_elapsed > pct_elapsed.*) {
+        pct_elapsed.* = int_pct_elapsed;
         root_node.completeOne();
     }
 }
