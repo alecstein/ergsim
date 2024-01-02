@@ -55,19 +55,22 @@ pub fn main() !void {
     var ct: usize = 0; // collision count
 
     while (t < max_time) {
-        const next_col = getNextCollision(cols);
+        const next_col = nextCollision(cols);
+        const dt = next_col.dt;
+        const j = next_col.j;
+        const col_type = next_col.type;
 
         advanceXsVs(next_col.dt, xs, vs);
 
-        if (next_col.type == ColType.ground) {
-            computeGroundCol(next_col.j, next_col.dt, xs, vs, cols);
+        if (col_type == ColType.ground) {
+            computeGroundCol(j, dt, xs, vs, cols);
         } else {
-            computePistCol(next_col.j, next_col.dt, xs, vs, cols);
+            computePistCol(j, dt, xs, vs, cols);
         }
 
         updateProgress(root_node, &pct_done, t, max_time, est_total_items);
 
-        t += next_col.dt;
+        t += dt;
         ct += 1;
     }
 
@@ -133,7 +136,7 @@ fn elasticCol(m1: f64, v1: f64, m2: f64, v2: f64) struct { v1_prime: f64, v2_pri
     return .{ .v1_prime = v1_prime, .v2_prime = v2_prime };
 }
 
-fn getNextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
+fn nextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
     // "j" is the index of the colliding particle
 
     var dt = math.inf(f64);
