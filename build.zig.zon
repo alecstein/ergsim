@@ -17,7 +17,7 @@
     .dependencies = .{
         .@"zig-webui" = .{
             .url = "https://github.com/webui-dev/zig-webui/archive/main.tar.gz",
-            .hash = "1220b627dff5565052341afad637d418cec81f4b23e7700150612f37e1bd30edd04c",
+            .hash = "122051976649a98212bd8a2485bb66f745103609bd6fe7399a1acb4367de6332ad1a",
         },
     },
     .paths = .{

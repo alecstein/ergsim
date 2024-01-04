@@ -50,10 +50,10 @@ pub fn build(b: *std.Build) void {
     });
 
     // add module
-    exe.addModule("webui", zig_webui.module("webui"));
+    vis.addModule("webui", zig_webui.module("webui"));
 
     // link library
-    exe.linkLibrary(zig_webui.artifact("webui"));
+    vis.linkLibrary(zig_webui.artifact("webui"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
