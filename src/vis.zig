@@ -2,30 +2,36 @@
 
 const std = @import("std");
 const sim = @import("sim.zig");
+
+const webui = @import("webui");
+const html = @embedFile("index.html");
+
 const math = std.math;
 const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
 const default_n = 1000;
-const default_t = 1000.0;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
 
 pub fn main() !void {
+    var nwin = webui.newWindow;
+    _ = nwin.show(html);
+
     var timer = try std.time.Timer.start();
     const t0 = timer.read();
 
     const params = try getArgs();
     const n = params.n;
-    const max_time = params.t;
 
     var pct_elapsed: u8 = 0;
+    _ = pct_elapsed;
     var progress = std.Progress{};
     const root_node = progress.start("Simulating", 100);
     defer root_node.end();
 
-    std.debug.print("Particles: {d}\tWorldtime: {d}s\n", .{ n, max_time });
+    std.debug.print("Particles: {d}\n", .{n});
 
     var xs = try alloc.alloc(f64, n);
     var vs = try alloc.alloc(f64, n);
@@ -43,9 +49,27 @@ pub fn main() !void {
 
     while (t < max_time) {
         const dt = stepForward(cols, xs, vs);
-        updateProgress(root_node, &pct_elapsed, t, max_time);
         t += dt;
         ct += 1;
+
+        const xsBytes = std.mem.sliceAsBytes(xs);
+        const vsBytes = std.mem.sliceAsBytes(vs);
+
+        if (ct % 500 == 0) {
+            nwin.sendRaw(
+                "updateGasDensityHistogram",
+                xsBytes,
+            );
+
+            nwin.sendRaw(
+                "updateMomentumHistogram",
+                vsBytes,
+            );
+        }
+
+        // webui.wait();
+
+        webui.clean();
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -54,23 +78,12 @@ pub fn main() !void {
     std.debug.print("Time taken: {d:.2}s\n", .{time_taken / 1000000000.0});
 }
 
-fn getArgs() !struct { n: u32, t: f64 } {
+fn getArgs() !struct { n: u32 } {
     var arg_it = std.process.args();
     _ = arg_it.skip();
-    var arg = arg_it.next() orelse return .{ .n = default_n, .t = default_t };
+    var arg = arg_it.next() orelse return .{ .n = default_n };
     const n = try std.fmt.parseInt(u32, arg, 10);
-    arg = arg_it.next() orelse return .{ .n = n, .t = default_t };
-    const t = try std.fmt.parseFloat(f64, arg);
-    return .{ .n = n, .t = t };
-}
-
-fn updateProgress(root_node: *std.Progress.Node, pct_elapsed: *u8, t: f64, max_time: f64) void {
-    const new_pct_elapsed = 100 * t / max_time;
-    const int_pct_elapsed = @as(u8, @intFromFloat(new_pct_elapsed));
-    if (int_pct_elapsed > pct_elapsed.*) {
-        pct_elapsed.* = int_pct_elapsed;
-        root_node.completeOne();
-    }
+    return .{ .n = n };
 }
 
 fn stepForward(cols: []Col, xs: []f64, vs: []f64) f64 {
