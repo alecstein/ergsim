@@ -42,6 +42,19 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zig_webui = b.dependency("zig-webui", .{
+        .target = target,
+        .optimize = optimize,
+        .enable_tls = false, // whether enable tls support
+        .is_static = true, // whether static link
+    });
+
+    // add module
+    exe.addModule("webui", zig_webui.module("webui"));
+
+    // link library
+    exe.linkLibrary(zig_webui.artifact("webui"));
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
