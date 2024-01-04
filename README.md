@@ -28,9 +28,13 @@ zig build -Drelease
 
 Then to run the simulation,
 
+`./zig-out/bin/viz <number-of-particles>`
+
+or
+
 `./zig-out/bin/ergsim <number-of-particles> <time>`
 
-You can also run it without any arguments and it'll run its default. To run the sim with gravity, do
+You can also run it without any arguments and it'll run its default. To run the sim with gravity (but no visualizations), do
 
 `./zig-out/bin/ergsim_grav <number-of-particles> <time>`
 

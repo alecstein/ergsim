@@ -50,7 +50,7 @@ pub fn main() !void {
         const xsBytes = std.mem.sliceAsBytes(xs);
         const vsBytes = std.mem.sliceAsBytes(vs);
 
-        if (ct % n / 10 == 0) {
+        if (ct % (n / 50) == 0) {
             win.sendRaw(
                 "updateGasDensityHistogram",
                 xsBytes,
