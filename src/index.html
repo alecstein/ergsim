@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8\" />
+  <script src="webui.js"></script>
+  <script src="https://d3js.org/d3.v6.js"></script>
+  <title>ideal gas and piston simulation</title>
+</head>
+
+<body>
+  <div id="gas_density"></div>
+  <div id="momentum"></div>
+  <script>
+    window.resizeTo(1000, 600);
+    function rawBytesToFloat64Arr(byteArray) {
+      const unpaddedBytes = byteArray.slice(6, -1);
+      const uint8Array = new Uint8Array(unpaddedBytes);
+      const buffer = uint8Array.buffer;
+      const dataView = new DataView(buffer);
+      const numFloats = buffer.byteLength / 8;
+      let float64Array = new Float64Array(numFloats);
+      for (let i = 0; i < numFloats; i++) {
+        float64Array[i] = dataView.getFloat64(i * 8, true);
+      }
+      return float64Array;
+    }
+
+    var margin = { top: 50, right: 30, bottom: 30, left: 40 },
+      width = 600 - margin.left - margin.right,
+      height = 300 - margin.top - margin.bottom;
+
+    function initGasDensityHistogram() {
+
+      var svg = d3
+        .select("#gas_density")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      var xMax = 2;
+      var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
+
+      svg
+        .append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x))
+        .call((g) =>
+          g
+            .append("text")
+            .attr("x", width)
+            .attr("y", margin.bottom - 4)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "end")
+            .text("position (x) (m)")
+        );
+
+      svg
+        .append("text")
+        .attr("class", "title")
+        .attr("x", width / 2)
+        .attr("y", -20)
+        .attr("text-anchor", "middle")
+        .text("gas density (particle density) along x-axis");
+    }
+
+    initGasDensityHistogram()
+
+    function updateGasDensityHistogram(bytes) {
+
+      var svg = d3.select("#gas_density svg g");
+      svg.selectAll("rect").remove();
+
+      var xMax = 2;
+      var numBins = 100;
+      var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
+      var binWidth = (x.domain()[1] - x.domain()[0]) / numBins;
+
+      const floatArray = rawBytesToFloat64Arr(bytes);
+
+      var histogram = d3
+        .histogram(floatArray)
+        .domain(x.domain())
+        .thresholds(x.ticks(numBins));
+
+      var bins = histogram(floatArray);
+
+      bins.forEach((bin) => {
+        bin.height = bin.length / (floatArray.length * binWidth);
+      });
+
+      var colorScale = d3.scaleLinear().domain([0, 1]).range(["white", "orange"]);
+
+      svg
+        .selectAll("rect")
+        .data(bins)
+        .enter()
+        .append("rect")
+        .attr("x", 1)
+        .attr("transform", function (d) {
+          return "translate(" + x(d.x0) + ",0)";
+        })
+        .attr("width", function (d) {
+          return x(d.x1) - x(d.x0);
+        })
+        .attr("height", height)
+        .style("fill", function (d) {
+          return colorScale(d.height);
+        });
+
+    }
+
+    function initMomentumHistogram() {
+
+      var svg = d3
+        .select("#momentum")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      var vMax = 5;
+      var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
+
+      svg
+        .append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(v))
+        .call((g) =>
+          g
+            .append("text")
+            .attr("x", width)
+            .attr("y", margin.bottom - 4)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "end")
+            .text("v (m/s)")
+        );
+
+      svg
+        .append("text")
+        .attr("class", "title")
+        .attr("x", width / 2)
+        .attr("y", -20)
+        .attr("text-anchor", "middle")
+        .text("velocity distribution");
+
+      var vMax = 5;
+      var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
+      var y = d3.scaleLinear().domain([0, .5]).range([height, 0]);
+
+      var m = 0.001;
+      var beta = (3*5000 + 1) / (2*(0.5 * .001 * 1 * 5000 + 1 * 9.8 * 1))
+
+      function gaussian(v) {
+        return Math.sqrt((beta * m) / (2 * 3.14)) * Math.exp(-beta *  m * Math.pow(v, 2) / 2);
+      }
+
+      var numPoints = 100;
+      var lineData = Array.from({ length: numPoints }, (_, i) => {
+        var xVal = (i / numPoints) * (2 * vMax) - vMax; // scale i to [-vMax, vMax]
+        return { x: xVal, y: gaussian(xVal) };
+      });
+
+      var line = d3.line()
+        .x(function (d) { return v(d.x); })
+        .y(function (d) { return y(d.y); });
+
+      svg.append("path")
+        .datum(lineData)
+        .attr("fill", "none")
+        .attr("stroke", "blue")
+        .attr("stroke-width", 1.5)
+        .attr("d", line);
+
+    }
+
+    initMomentumHistogram()
+
+    function updateMomentumHistogram(bytes) {
+
+      var svg = d3.select("#momentum svg g");
+      svg.selectAll("rect").remove();
+
+      var vMax = 5;
+      var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
+      var y = d3.scaleLinear().domain([0, .5]).range([height, 0]);
+
+      var numBins = 100;
+      var binWidth = (v.domain()[1] - v.domain()[0]) / numBins;
+
+      const floatArray = rawBytesToFloat64Arr(bytes);
+
+      var histogram = d3
+        .histogram(floatArray)
+        .domain(v.domain())
+        .thresholds(v.ticks(numBins));
+
+      var bins = histogram(floatArray);
+
+      bins.forEach((bin) => {
+        bin.height = bin.length / (floatArray.length * binWidth);
+      });
+
+
+
+      svg.selectAll("rect")
+        .data(bins)
+        .enter()
+        .append("rect")
+        .attr("x", function (d) { return v(d.x0); })
+        .attr("width", function (d) { return v(d.x1) - v(d.x0) - 1; })
+        .attr("y", function (d) { return y(d.height); })
+        .attr("height", function (d) { return height - y(d.height); })
+        .style("fill", "black");
+    }
+
+  </script>
+</body>
+
+</html>
