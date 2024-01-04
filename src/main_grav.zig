@@ -20,6 +20,11 @@ pub fn main() !void {
     const n = params.n;
     const max_time = params.t;
 
+    var pct_elapsed: u8 = 0;
+    var progress = std.Progress{};
+    const root_node = progress.start("Simulating", 100);
+    defer root_node.end();
+
     std.debug.print("Particles: {d}\tWorldtime: {d}s\n", .{ n, max_time });
 
     var xs = try alloc.alloc(f64, n);
@@ -33,32 +38,14 @@ pub fn main() !void {
 
     sim.initArrays(xs, vs, cols);
 
-    var pct_elapsed: u8 = 0;
-    var progress = std.Progress{};
-    const root_node = progress.start("Simulating", 100);
-    defer root_node.end();
-
     var t: f64 = 0;
     var ct: usize = 0; // collision count
 
     while (t < max_time) {
-        const next_col = sim.nextCollision(cols);
-        const dt = next_col.dt;
-        const j = next_col.j;
-        const col_type = next_col.type;
-
-        sim.advanceXsVsWithGravity(next_col.dt, xs, vs);
-
-        if (col_type == ColType.ground) {
-            sim.computeGroundColWithGravity(j, dt, xs, vs, cols);
-        } else {
-            sim.computePistColWithGravity(j, dt, xs, vs, cols);
-        }
-
+        const dt = stepForward(cols, xs, vs);
+        updateProgress(root_node, &pct_elapsed, t, max_time);
         t += dt;
         ct += 1;
-
-        updateProgress(root_node, &pct_elapsed, t, max_time);
     }
 
     const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
@@ -84,4 +71,20 @@ fn updateProgress(root_node: *std.Progress.Node, pct_elapsed: *u8, t: f64, max_t
         pct_elapsed.* = int_pct_elapsed;
         root_node.completeOne();
     }
+}
+
+fn stepForward(cols: []Col, xs: []f64, vs: []f64) f64 {
+    const next_col = sim.nextCollision(cols);
+    const dt = next_col.dt;
+    const j = next_col.j;
+    const col_type = next_col.type;
+
+    sim.advanceXsVsWithGravity(next_col.dt, xs, vs);
+
+    if (col_type == ColType.ground) {
+        sim.computeGroundColWithGravity(j, dt, xs, vs, cols);
+    } else {
+        sim.computePistColWithGravity(j, dt, xs, vs, cols);
+    }
+    return dt;
 }
