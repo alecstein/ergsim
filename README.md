@@ -42,6 +42,8 @@ https://github.com/alecstein/phys/assets/16236421/cc232826-662c-405e-bda4-f017c4
 
 https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f423df2
 
+https://github.com/alecstein/ergsim/assets/16236421/c73f135a-aca0-4032-b1eb-3aa9f3524549
+
 
 ### Diary
 
@@ -71,3 +73,8 @@ https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f
 
 * Worked out some more optimizations
 * A good way of unit testing to write code that you're sure is correct, count the collisions (for fixed initial conditions), then do the same thing for your optimized code. If the counts are the same, then you're probably ok. The counts will not be exactly the same due to floating point errors -- sometimes, collision times can vary in the 10th decimal place or so between optimizations. This shouldn't matter too much
+
+##### Jan. 3
+
+* Rewrote using zig-webui. Kinda weird and annoying to use, but we have liftoff. Total freedom from python and matplotlib
+* Running this is as simple as doing `vis <particle number>` and letting 'er rip
