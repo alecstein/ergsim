@@ -5,6 +5,7 @@ const sim = @import("sim.zig");
 
 const webui = @import("webui");
 const html = @embedFile("index.html");
+var win: webui = undefined;
 
 const math = std.math;
 const Allocator = std.mem.Allocator;
@@ -16,20 +17,14 @@ pub const Col = sim.Col;
 pub const ColType = sim.ColType;
 
 pub fn main() !void {
-    var nwin = webui.newWindow;
-    _ = nwin.show(html);
-
-    var timer = try std.time.Timer.start();
-    const t0 = timer.read();
+    win = webui.newWindow();
+    _ = win.show(html);
 
     const params = try getArgs();
     const n = params.n;
 
-    var pct_elapsed: u8 = 0;
-    _ = pct_elapsed;
-    var progress = std.Progress{};
-    const root_node = progress.start("Simulating", 100);
-    defer root_node.end();
+    var buf = try std.fmt.allocPrint(alloc, "setConstants({}, {}, {}, {}, {});", .{ n, sim.m_particle, sim.m_piston, sim.piston_x, 1 });
+    win.run(buf);
 
     std.debug.print("Particles: {d}\n", .{n});
 
@@ -55,27 +50,22 @@ pub fn main() !void {
         const xsBytes = std.mem.sliceAsBytes(xs);
         const vsBytes = std.mem.sliceAsBytes(vs);
 
-        if (ct % 500 == 0) {
-            nwin.sendRaw(
+        if (ct % n / 10 == 0) {
+            win.sendRaw(
                 "updateGasDensityHistogram",
                 xsBytes,
             );
 
-            nwin.sendRaw(
+            win.sendRaw(
                 "updateMomentumHistogram",
                 vsBytes,
             );
         }
-
-        // webui.wait();
-
-        webui.clean();
     }
 
-    const time_taken = @as(f64, @floatFromInt(timer.read() - t0));
-    std.debug.print("\x1b[2K\x1b[0G", .{}); // clear the line of updates
-    std.debug.print("Collisions: {}\n", .{ct});
-    std.debug.print("Time taken: {d:.2}s\n", .{time_taken / 1000000000.0});
+    webui.wait();
+
+    webui.clean();
 }
 
 fn getArgs() !struct { n: u32 } {

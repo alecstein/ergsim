@@ -26,6 +26,55 @@
       return float64Array;
     }
 
+    var nParticles = undefined;
+    var mParticles = undefined;
+    var mPiston = undefined;
+    var pistonInitialHeight = undefined;
+    var particleInitialV = undefined;
+    var beta = undefined;
+    function setConstants(n, mPart, mPist, pistonInitH, partInitV) {
+      nParticles = n;
+
+      d3.select("#gas_density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
+        .text("gas density (particle density) along x-axis, " + nParticles + " particles");
+
+      mParticles = mPart;
+      mPiston = mPist;
+      pistonInitialHeight = pistonInitH;
+      particleInitialV = partInitV;
+
+      var energy = 0.5 * mParticles * Math.pow(particleInitialV, 2) + mPiston * 9.8 * pistonInitialHeight;
+      beta = (3 * nParticles + 1) / (2 * energy);
+
+
+      var vMax = 5;
+      var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
+      var y = d3.scaleLinear().domain([0, .5]).range([height, 0]);
+
+
+      var numPoints = 200;
+      var lineData = Array.from({ length: numPoints }, (_, i) => {
+        var vVal = (i / numPoints) * (2 * vMax) - vMax; // scale i to [-vMax, vMax]
+        return { x: vVal, y: gaussian(beta, mParticles, vVal) };
+      });
+
+      var line = d3.line()
+        .x(function (d) { return v(d.x); })
+        .y(function (d) { return y(d.y); });
+
+      d3.select("#momentum > svg > g")
+        .append("path")
+        .datum(lineData)
+        .attr("fill", "none")
+        .attr("stroke", "blue")
+        .attr("stroke-width", 1.5)
+        .attr("d", line);
+    }
+
+    function gaussian(beta, m, v) {
+      return Math.sqrt((beta * m) / (2 * Math.PI)) * Math.exp(-beta * m * Math.pow(v, 2) / 2);
+    }
+
     var margin = { top: 50, right: 30, bottom: 30, left: 40 },
       width = 600 - margin.left - margin.right,
       height = 300 - margin.top - margin.bottom;
@@ -146,35 +195,6 @@
         .attr("y", -20)
         .attr("text-anchor", "middle")
         .text("velocity distribution");
-
-      var vMax = 5;
-      var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
-      var y = d3.scaleLinear().domain([0, .5]).range([height, 0]);
-
-      var m = 0.001;
-      var beta = (3*5000 + 1) / (2*(0.5 * .001 * 1 * 5000 + 1 * 9.8 * 1))
-
-      function gaussian(v) {
-        return Math.sqrt((beta * m) / (2 * 3.14)) * Math.exp(-beta *  m * Math.pow(v, 2) / 2);
-      }
-
-      var numPoints = 100;
-      var lineData = Array.from({ length: numPoints }, (_, i) => {
-        var xVal = (i / numPoints) * (2 * vMax) - vMax; // scale i to [-vMax, vMax]
-        return { x: xVal, y: gaussian(xVal) };
-      });
-
-      var line = d3.line()
-        .x(function (d) { return v(d.x); })
-        .y(function (d) { return y(d.y); });
-
-      svg.append("path")
-        .datum(lineData)
-        .attr("fill", "none")
-        .attr("stroke", "blue")
-        .attr("stroke-width", 1.5)
-        .attr("d", line);
-
     }
 
     initMomentumHistogram()
@@ -205,7 +225,6 @@
       });
 
 
-
       svg.selectAll("rect")
         .data(bins)
         .enter()
@@ -216,7 +235,6 @@
         .attr("height", function (d) { return height - y(d.height); })
         .style("fill", "black");
     }
-
   </script>
 </body>
 
