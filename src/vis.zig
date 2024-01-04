@@ -47,7 +47,7 @@ pub fn main() !void {
     var t: f64 = 0;
     var ct: usize = 0; // collision count
 
-    while (t < max_time) {
+    while (true) {
         const dt = stepForward(cols, xs, vs);
         t += dt;
         ct += 1;
