@@ -38,14 +38,6 @@ You can also run it without any arguments and it'll run its default. To run the 
 
 `./zig-out/bin/ergsim_grav <number-of-particles> <time>`
 
-Right now the code doesn't output anything -- it just runs. I've intentionally limited the scope of what the code on GitHub does to keep it simple for reviewing.
-
-I wrote some python code (not included) to make some histograms. These are with particle gravity turned off:
-
-https://github.com/alecstein/phys/assets/16236421/cc232826-662c-405e-bda4-f017c42fab71
-
-https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f423df2
-
 https://github.com/alecstein/ergsim/assets/16236421/c73f135a-aca0-4032-b1eb-3aa9f3524549
 
 
@@ -82,3 +74,4 @@ https://github.com/alecstein/ergsim/assets/16236421/c73f135a-aca0-4032-b1eb-3aa9
 
 * Rewrote using zig-webui. Kinda weird and annoying to use, but we have liftoff. Total freedom from python and matplotlib
 * Running this is as simple as doing `vis <particle number>` and letting 'er rip
+* Archived old visuals [here](https://github.com/alecstein/phys/assets/16236421/cc232826-662c-405e-bda4-f017c42fab71) and [here](https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f423df2)
