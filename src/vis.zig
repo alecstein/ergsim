@@ -22,11 +22,8 @@ pub fn main() !void {
 
     const params = try getArgs();
     const n = params.n;
-
-    var buf = try std.fmt.allocPrint(alloc, "setConstants({}, {}, {}, {}, {});", .{ n, sim.m_particle, sim.m_piston, sim.piston_x, 1 });
-    win.run(buf);
-
-    std.debug.print("Particles: {d}\n", .{n});
+    const x_bins = 100;
+    const v_bins = 100;
 
     var xs = try alloc.alloc(f64, n);
     var vs = try alloc.alloc(f64, n);
@@ -39,8 +36,24 @@ pub fn main() !void {
 
     sim.initArrays(xs, vs, cols);
 
+    var init_ke_particles: f64 = 0;
+    for (vs) |v| {
+        init_ke_particles += sim.m_particle * math.pow(f64, v, 2) / 2;
+    }
+    const init_ke_piston = sim.m_piston * math.pow(f64, sim.piston_v, 2) / 2;
+    const init_pe_particles: f64 = 0;
+    const init_pe_piston = sim.g * sim.m_piston * sim.piston_x;
+    const energy = init_ke_particles + init_ke_piston + init_pe_particles + init_pe_piston;
+
     var t: f64 = 0;
     var ct: usize = 0; // collision count
+
+    // get real system time
+    var timer = try std.time.Timer.start();
+    var t_ct = timer.read();
+
+    var buf = try std.fmt.allocPrint(alloc, "setConstants({}, {}, {}, {}, {}, {}, {});", .{ n, sim.m_particle, sim.m_piston, sim.piston_x, x_bins, v_bins, energy });
+    win.run(buf);
 
     while (true) {
         const dt = stepForward(cols, xs, vs);
@@ -48,17 +61,28 @@ pub fn main() !void {
         ct += 1;
 
         const xsBytes = std.mem.sliceAsBytes(xs);
+        _ = xsBytes;
         const vsBytes = std.mem.sliceAsBytes(vs);
+        _ = vsBytes;
 
-        if (ct % (n / 50) == 0) {
+        var xHist = buildHistogram(xs, 0, 2, x_bins);
+        // std.debug.print("xHist: {any}\n", .{xHist});
+        var xHistBytes = std.mem.asBytes(&xHist);
+        // std.debug.print("xHistBytes: {any}\n", .{xHistBytes});
+
+        var vHist = buildHistogram(vs, -5, 5, v_bins);
+        var vHistBytes = std.mem.asBytes(&vHist);
+
+        if (timer.read() > t_ct + 50000000) {
+            t_ct = timer.read();
             win.sendRaw(
-                "updateGasDensityHistogram",
-                xsBytes,
+                "updateDensityHist",
+                xHistBytes,
             );
 
             win.sendRaw(
-                "updateMomentumHistogram",
-                vsBytes,
+                "updateMomentumHist",
+                vHistBytes,
             );
         }
     }
@@ -90,4 +114,23 @@ fn stepForward(cols: []Col, xs: []f64, vs: []f64) f64 {
         sim.computePistCol(j, dt, xs, vs, cols);
     }
     return dt;
+}
+
+fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n: usize) [n]u32 {
+    const step = (upper - lower) / @as(f64, n);
+    var hist: [n]u32 = undefined;
+    @memset(&hist, 0);
+
+    for (arr) |x| {
+        if (x < lower or x > upper) {
+            continue;
+        }
+        // std.debug.print("x: {}", .{x});
+
+        const i = @as(usize, @intFromFloat((x - lower) / step));
+        if (i >= 0 and i < n) {
+            hist[i] += 1;
+        }
+    }
+    return hist;
 }
