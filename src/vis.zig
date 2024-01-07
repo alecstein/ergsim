@@ -22,6 +22,8 @@ pub fn main() !void {
     win = webui.newWindow();
     _ = win.show(html);
 
+    var timer = std.time.Timer();
+
     const params = try getArgs();
     const n = params.n;
 
@@ -43,6 +45,7 @@ pub fn main() !void {
 
     var t: f64 = 0;
     var ct: usize = 0; // collision count
+    var t_ct = timer.read();
 
     while (true) {
         const dt = stepForward(cols, xs, ps);
@@ -52,6 +55,7 @@ pub fn main() !void {
         const xsBytes = std.mem.sliceAsBytes(xs);
         _ = xsBytes;
         const psBytes = std.mem.sliceAsBytes(ps);
+        _ = psBytes;
 
         var xHist = buildHistogram(xs, 0, 1, x_bins);
         // std.debug.print("xHist: {any}\n", .{xHist});
