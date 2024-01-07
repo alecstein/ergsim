@@ -12,6 +12,8 @@ const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
 const default_n = 1000;
+const x_bins = 100;
+const v_bins = 100;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
@@ -48,18 +50,27 @@ pub fn main() !void {
         ct += 1;
 
         const xsBytes = std.mem.sliceAsBytes(xs);
+        _ = xsBytes;
         const psBytes = std.mem.sliceAsBytes(ps);
 
-        if (ct % 100 == 0) {
-            // std.debug.print("xs: {any}\n", .{xsBytes});
+        var xHist = buildHistogram(xs, 0, 1, x_bins);
+        // std.debug.print("xHist: {any}\n", .{xHist});
+        var xHistBytes = std.mem.asBytes(&xHist);
+        // std.debug.print("xHistBytes: {any}\n", .{xHistBytes});
+
+        var pHist = buildHistogram(ps, -sim.init_v * 4, sim.init_v * 4, v_bins);
+        var pHistBytes = std.mem.asBytes(&pHist);
+
+        if (timer.read() > t_ct + 50000000) {
+            t_ct = timer.read();
             win.sendRaw(
-                "updateGasDensityHistogram",
-                xsBytes,
+                "updateDensityHist",
+                xHistBytes,
             );
 
             win.sendRaw(
-                "updateMomentumHistogram",
-                psBytes,
+                "updateMomentumHist",
+                pHistBytes,
             );
         }
     }
@@ -91,4 +102,23 @@ fn stepForward(cols: []Col, xs: []f64, ps: []f64) f64 {
         sim.computePistCol(j, dt, xs, ps, cols);
     }
     return dt;
+}
+
+fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n: usize) [n]u32 {
+    const step = (upper - lower) / @as(f64, n);
+    var hist: [n]u32 = undefined;
+    @memset(&hist, 0);
+
+    for (arr) |x| {
+        if (x < lower or x > upper) {
+            continue;
+        }
+        // std.debug.print("x: {}", .{x});
+
+        const i = @as(usize, @intFromFloat((x - lower) / step));
+        if (i >= 0 and i < n) {
+            hist[i] += 1;
+        }
+    }
+    return hist;
 }

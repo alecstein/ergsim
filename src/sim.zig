@@ -6,6 +6,7 @@ const alloc = std.heap.page_allocator;
 
 const mu = 0.001;
 const T = 10;
+pub const init_v = -0.000001;
 pub var piston_p: f64 = 0;
 pub var piston_x: f64 = 1;
 pub var piston_v: f64 = 0;
@@ -25,7 +26,7 @@ pub const Col = struct {
 };
 
 pub fn initVel() f64 {
-    const v = -0.000001;
+    const v = init_v;
     return v;
 }
 
