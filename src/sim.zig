@@ -5,7 +5,7 @@ const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
 const mu = 0.001;
-const T = 0.1;
+const T = 10;
 pub var piston_p: f64 = 0;
 pub var piston_x: f64 = 1;
 pub var piston_v: f64 = 0;
@@ -25,7 +25,7 @@ pub const Col = struct {
 };
 
 pub fn initVel() f64 {
-    const v = -0.00001;
+    const v = -0.000001;
     return v;
 }
 
@@ -36,6 +36,7 @@ pub fn initArrays(xs: []f64, ps: []f64, cols: []Col) void {
     const rand = prng.random();
 
     for (xs, ps, cols, 0..) |*x, *p, *col, i| {
+        _ = i;
         x.* = rand.float(f32);
         p.* = initVel();
 
@@ -48,7 +49,7 @@ pub fn initArrays(xs: []f64, ps: []f64, cols: []Col) void {
         };
         col.* = c;
 
-        std.debug.print("{}: {}, {}, {}\n", .{ i, c, ps[i], xs[i] });
+        // std.debug.print("{}: {}, {}, {}\n", .{ i, c, ps[i], xs[i] });
     }
 }
 
@@ -65,8 +66,8 @@ pub fn getTimeToPiston(x: f64, p: f64) f64 {
 
 // Returns the momentum of the particle after collision
 pub fn elasticCol(cur_piston_p: f64, p: f64) struct { new_piston_p: f64, new_p: f64 } {
-    const new_piston_p = 2 * math.sqrt(mu) * p / (1 + mu * mu) + (1 - mu * mu) * cur_piston_p / (1 + mu * mu);
-    const new_p = 2 * mu * math.sqrt(mu) * cur_piston_p / (1 + mu * mu) - (1 - mu * mu) * p / (1 + mu * mu);
+    const new_piston_p = 2 * mu * p / (mu + 1) - (mu - 1) * cur_piston_p / (mu + 1);
+    const new_p = (mu - 1) * p / (mu + 1) + 2 * mu * cur_piston_p / (mu + 1);
     return .{ .new_piston_p = new_piston_p, .new_p = new_p };
 }
 
@@ -80,7 +81,7 @@ pub fn nextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
     for (cols, 0..) |c, k| {
         const trial_t = c.time;
 
-        std.debug.print("{d} col: {any}\n", .{ k, c });
+        // std.debug.print("{d} col: {any}\n", .{ k, c });
 
         std.debug.assert(dt != 0);
 
@@ -91,9 +92,9 @@ pub fn nextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
         }
     }
 
-    std.debug.print("dt: {}\n", .{dt});
-    std.debug.print("j: {}\n", .{j});
-    std.debug.print("col_type: {}\n", .{col_type});
+    // std.debug.print("dt: {}\n", .{dt});
+    // std.debug.print("j: {}\n", .{j});
+    // std.debug.print("col_type: {}\n", .{col_type});
 
     // std.debug.print("minimum j: {}\n", .{j});
 
@@ -106,6 +107,8 @@ pub fn advanceXsPs(dt: f64, xs: []f64, ps: []f64) void {
 
     for (xs, ps) |*x, *p| {
         x.* += p.* * dt / (mu * T);
+        // std.debug.print("x: {}\n", .{x.*});
+        // std.debug.print("p: {}\n", .{p.*});
     }
 }
 
@@ -124,13 +127,13 @@ pub fn computeGroundCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) vo
 }
 
 pub fn computePistCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) void {
-    std.debug.print("j: {}\n", .{j});
+    // std.debug.print("j: {}\n", .{j});
     // print out old and new ps to check for errors
-    std.debug.print("old ps[j]: {}\n", .{ps[j]});
+    // std.debug.print("old ps[j]: {}\n", .{ps[j]});
     const new_ps = elasticCol(piston_p, ps[j]);
     ps[j] = new_ps.new_p;
     piston_p = new_ps.new_piston_p;
-    std.debug.print("new ps[j]: {}\n", .{ps[j]});
+    // std.debug.print("new ps[j]: {}\n", .{ps[j]});
 
     // A small optimization is used here.
     // We know that if a particle is going to collide with a ground,
@@ -139,20 +142,29 @@ pub fn computePistCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) void
     // any particles that would hit the ground before this collision will
     // still hit the ground after it.
 
-    for (cols, xs, ps) |*c, x, v| {
+    for (cols, xs, ps, 0..) |*c, x, p, i| {
+        _ = i;
         if (c.*.type == ColType.ground) {
             c.*.time -= dt;
-        } else if (v > 0) {
+        } else if (p > 0) {
             // If the particles are traveling upwards (and not subject to gravity)
             // they'll never hit the ground
-            c.*.time = getTimeToPiston(x, v);
+            c.*.time = getTimeToPiston(x, p);
             c.*.type = ColType.piston;
         } else {
             // This is for those cases where the particles are traveling downward,
             // but still are scheduled to get hit by the piston. These are the
             // ambiguous cases we need to solve
-            const t_g = getTimeToGround(x, v);
-            const t_p = getTimeToPiston(x, v);
+            const t_g = getTimeToGround(x, p);
+            const t_p = getTimeToPiston(x, p);
+            // std.debug.print("{}: {}\n", .{ i, c.* });
+            // std.debug.print("t_g: {}\n", .{t_g});
+            // std.debug.print("t_p: {}\n", .{t_p});
+            // std.debug.print("ps[{}]: {}\n", .{ i, ps[i] });
+            // std.debug.print("xs[{}]: {}\n", .{ i, xs[i] });
+            // std.debug.print("piston_p: {}\n", .{piston_p});
+            // std.debug.print("piston_x: {}\n", .{piston_x});
+            std.debug.assert(t_p != 0);
             c.*.time = @min(t_g, t_p);
             c.*.type = if (t_g < t_p) ColType.ground else ColType.piston;
         }

@@ -32,6 +32,8 @@
     var pistonInitialHeight = undefined;
     var particleInitialV = undefined;
     var beta = undefined;
+    var vMax = 1e-3;
+
     function setConstants(n, mPart, mPist, pistonInitH, partInitV) {
       nParticles = n;
 
@@ -47,9 +49,9 @@
       beta = (3 * nParticles + 1) / (2 * energy);
 
 
-      var vMax = .3;
+
       var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
-      var y = d3.scaleLinear().domain([0, .5]).range([height, 0]);
+      var y = d3.scaleLinear().domain([0, 400]).range([height, 0]);
 
 
       var numPoints = 200;
@@ -89,7 +91,7 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-      var xMax = 2;
+      var xMax = 1;
       var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
 
       svg
@@ -122,7 +124,7 @@
       var svg = d3.select("#gas_density svg g");
       svg.selectAll("rect").remove();
 
-      var xMax = 2;
+      var xMax = 1;
       var numBins = 100;
       var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
       var binWidth = (x.domain()[1] - x.domain()[0]) / numBins;
@@ -171,7 +173,8 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-      var vMax = 5;
+
+
       var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
 
       svg
@@ -204,9 +207,8 @@
       var svg = d3.select("#momentum svg g");
       svg.selectAll("rect").remove();
 
-      var vMax = 5;
       var v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
-      var y = d3.scaleLinear().domain([0, .5]).range([height, 0]);
+      var y = d3.scaleLinear().domain([0, 400]).range([height, 0]);
 
       var numBins = 100;
       var binWidth = (v.domain()[1] - v.domain()[0]) / numBins;
