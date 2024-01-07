@@ -29,28 +29,29 @@ pub fn main() !void {
     std.debug.print("Particles: {d}\n", .{n});
 
     var xs = try alloc.alloc(f64, n);
-    var vs = try alloc.alloc(f64, n);
+    var ps = try alloc.alloc(f64, n);
     var cols = try alloc.alloc(Col, n);
     defer {
         alloc.free(xs);
-        alloc.free(vs);
+        alloc.free(ps);
         alloc.free(cols);
     }
 
-    sim.initArrays(xs, vs, cols);
+    sim.initArrays(xs, ps, cols);
 
     var t: f64 = 0;
     var ct: usize = 0; // collision count
 
     while (true) {
-        const dt = stepForward(cols, xs, vs);
+        const dt = stepForward(cols, xs, ps);
         t += dt;
         ct += 1;
 
         const xsBytes = std.mem.sliceAsBytes(xs);
-        const vsBytes = std.mem.sliceAsBytes(vs);
+        const psBytes = std.mem.sliceAsBytes(ps);
 
-        if (ct % (n / 50) == 0) {
+        if (ct % 1000 == 0) {
+            // std.debug.print("xs: {any}\n", .{xsBytes});
             win.sendRaw(
                 "updateGasDensityHistogram",
                 xsBytes,
@@ -58,12 +59,12 @@ pub fn main() !void {
 
             win.sendRaw(
                 "updateMomentumHistogram",
-                vsBytes,
+                psBytes,
             );
         }
     }
 
-    webui.wait();
+    // webui.wait();
 
     webui.clean();
 }
@@ -76,18 +77,18 @@ fn getArgs() !struct { n: u32 } {
     return .{ .n = n };
 }
 
-fn stepForward(cols: []Col, xs: []f64, vs: []f64) f64 {
+fn stepForward(cols: []Col, xs: []f64, ps: []f64) f64 {
     const next_col = sim.nextCollision(cols);
     const dt = next_col.dt;
     const j = next_col.j;
     const col_type = next_col.type;
 
-    sim.advanceXsVs(next_col.dt, xs, vs);
+    sim.advanceXsPs(next_col.dt, xs, ps);
 
     if (col_type == ColType.ground) {
-        sim.computeGroundCol(j, dt, xs, vs, cols);
+        sim.computeGroundCol(j, dt, xs, ps, cols);
     } else {
-        sim.computePistCol(j, dt, xs, vs, cols);
+        sim.computePistCol(j, dt, xs, ps, cols);
     }
     return dt;
 }

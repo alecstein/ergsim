@@ -79,7 +79,7 @@ fn stepForward(cols: []Col, xs: []f64, vs: []f64) f64 {
     const j = next_col.j;
     const col_type = next_col.type;
 
-    sim.advanceXsVsWithGravity(next_col.dt, xs, vs);
+    sim.advanceXsPsWithGravity(next_col.dt, xs, vs);
 
     if (col_type == ColType.ground) {
         sim.computeGroundColWithGravity(j, dt, xs, vs, cols);
