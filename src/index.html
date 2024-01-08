@@ -46,7 +46,7 @@
 
       v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      vy = d3.scaleLinear().domain([0, 10000]).range([height, 0]);
+      vy = d3.scaleLinear().domain([0, 100000]).range([height, 0]);
 
       d3.select("#density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
         .text("gas density (particle density) along x-axis, " + nParticles + " particles");
@@ -107,27 +107,31 @@
 
     function updateDensityHist(bytes) {
       var svg = d3.select("#density svg g");
-      svg.selectAll("rect").remove();
-      data = rawBytesToCounts(bytes);
+
+      var data = rawBytesToCounts(bytes);
       var binWidth = xMax / xBins;
+      var x = d3.scaleLinear().domain([0, 1]).range([0, width]);
+      var colorScale = d3.scaleLinear().domain([0, 500]).range(["white", "orange"]);
 
-      x = d3.scaleLinear().domain([0, 1]).range([0, width]);
+      // Bind the data to the rects
+      var rects = svg.selectAll("rect")
+        .data(data);
 
-      var colorScale = d3.scaleLinear().domain([0, 10]).range(["white", "orange"]);
-      svg.selectAll("rect")
-        .data(data)
-        .enter()
-        .append("rect")
+      // Enter selection: Add new rects for new data
+      rects.enter().append("rect")
         .attr("x", 1)
+        .attr("width", x(binWidth) - x(0)) // Width of each bin
+        .attr("height", height) // Constant height for all bins
+        .merge(rects) // Merge enter and update selections
         .attr("transform", function (d, i) {
           return "translate(" + x(i * binWidth) + ",0)";
         })
-        .attr("width", x(binWidth) - x(0)
-        ) // Width of each bin
-        .attr("height", height) // Constant height for all bins
         .style("fill", function (d) {
           return colorScale(d);
         });
+
+      // Exit selection: Remove rects that are no longer needed
+      rects.exit().remove();
     }
 
     function initMomentumHistogram() {
@@ -149,8 +153,7 @@
         .call((g) =>
           g
             .append("text")
-            .attr("x", width)
-            .attr("width", 2) // Width of each bin
+            // .attr("x", width)
             .attr("y", margin.bottom - 4)
             .attr("fill", "currentColor")
             .attr("text-anchor", "end")
@@ -161,32 +164,38 @@
     initMomentumHistogram()
 
     function updateMomentumHist(bytes) {
-
       var svg = d3.select("#momentum svg g");
-      svg.selectAll("rect").remove();
 
-      data = rawBytesToCounts(bytes);
-
+      var data = rawBytesToCounts(bytes);
       var totalArea = nParticles * 2 * vMax / 200;
       var normalizedData = data.map((d) => d / totalArea);
       var binWidth = 2 * vMax / vBins;
 
-      svg.append("g")
+      // Update the axis if necessary
+      svg.select(".axis")
         .call(d3.axisLeft(vy));
 
-      svg.selectAll("rect")
-        .data(normalizedData)
-        .enter()
-        .append("rect")
+      // Bind the data to the rects
+      var rects = svg.selectAll("rect")
+        .data(normalizedData);
+
+      // Enter selection: Create new rects for new data
+      rects.enter().append("rect")
+        .attr("width", 3)
+        .style("fill", "black")
+        // Set initial attributes for new rects here (if necessary)
+        .merge(rects) // Merge enter and update selections
         .attr("v", 1)
         .attr("transform", function (d, i) {
           return "translate(" + v(i * binWidth - vMax) + ",0)";
         })
-        .attr("width", 2)
         .attr("y", function (d) { return vy(d); })
-        .attr("height", function (d) { return height - vy(d); })
-        .style("fill", "black");
+        .attr("height", function (d) { return height - vy(d); });
+
+      // Exit selection: Remove rects that are no longer needed
+      rects.exit().remove();
     }
+
 
 
   </script>

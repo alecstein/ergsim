@@ -4,7 +4,7 @@ const math = std.math;
 const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
-pub const mu = 0.01;
+pub const mu = 0.001;
 
 pub var piston_p: f64 = 0;
 pub var piston_x: f64 = 1;

@@ -18,7 +18,7 @@ const v_bins = 200;
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
 
-const refresh_ns = 80000000;
+const refresh_ns = 20000000;
 
 pub fn main() !void {
     win = webui.newWindow();
