@@ -31,6 +31,7 @@
     var xMax = 1.5;
     var xBins = 100;
     var vMax = .2;
+    var mu = undefined;
     var vBins = 200;
     vy = d3.scaleLinear().domain([0, .1]).range([height, 0]);
 
@@ -39,28 +40,33 @@
       width = 800 - margin.left - margin.right,
       height = 350 - margin.top - margin.bottom;
 
-    function setConstants(n, v_max) {
+    function setConstants(n, mu_) {
       nParticles = n;
 
-      vMax = v_max;
+      vMax = Math.sqrt(mu_) * .1;
+      mu = mu_;
 
-      v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
+      v = d3.scaleLinear().domain([-mu, mu]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      vy = d3.scaleLinear().domain([0, 100000]).range([height, 0]);
+      console.log(height);
+      vy = d3.scaleLinear().domain([0, 1*1/Math.sqrt(Math.PI * mu)]).range([height, 0]);
 
       d3.select("#density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
         .text("gas density (particle density) along x-axis, " + nParticles + " particles");
 
-      drawMomentumPrediction();
+      drawMomentumPrediction(mu, vMax);
     };
 
-    function drawMomentumPrediction() {
-
+    function drawMomentumPrediction(mu, vMax) {
       var numPoints = 200;
+      var scaleFactor = Math.sqrt(Math.PI * mu);
+
       var lineData = Array.from({ length: numPoints }, (_, i) => {
-        var v = - vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
-        return { v: v, y: v };
+        var v = -vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
+        var y = Math.exp(-Math.pow(v, 2) / mu) / scaleFactor; // Normalized Gaussian function
+        return { v: v, y: y };
       });
+
 
       var line = d3.line()
         .x(function (d) { return v(d.v); })
@@ -106,6 +112,7 @@
     initDensityHist();
 
     function updateDensityHist(bytes) {
+
       var svg = d3.select("#density svg g");
 
       var data = rawBytesToCounts(bytes);

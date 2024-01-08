@@ -30,10 +30,11 @@ pub fn main() !void {
     const n = params.n;
 
     const p_max = sim.mu * 0.1;
+    _ = p_max;
 
     var buf = try std.fmt.allocPrint(alloc, "setConstants({}, {});", .{
         n,
-        p_max,
+        sim.mu,
     });
     win.run(buf);
 
