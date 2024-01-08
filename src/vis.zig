@@ -13,7 +13,7 @@ const alloc = std.heap.page_allocator;
 
 const default_n = 1000;
 const x_bins = 100;
-const v_bins = 200;
+const v_bins = 1000;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
@@ -55,7 +55,7 @@ pub fn main() !void {
         var xHist = buildHistogram(xs, 0, 1.5, x_bins);
         var xHistBytes = std.mem.asBytes(&xHist);
 
-        var pHist = buildHistogram(ps, -math.sqrt(sim.mu) * 0.1, math.sqrt(sim.mu) * 0.1, v_bins);
+        var pHist = buildHistogram(ps, -math.sqrt(sim.mu), math.sqrt(sim.mu), v_bins);
         var pHistBytes = std.mem.asBytes(&pHist);
 
         if (timer.read() > refresh_ns) {
