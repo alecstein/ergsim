@@ -46,7 +46,7 @@
 
       v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      vy = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+      vy = d3.scaleLinear().domain([0, 10000]).range([height, 0]);
 
       d3.select("#density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
         .text("gas density (particle density) along x-axis, " + nParticles + " particles");
