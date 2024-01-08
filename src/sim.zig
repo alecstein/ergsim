@@ -4,7 +4,7 @@ const math = std.math;
 const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
-pub const mu = 0.1;
+pub const mu = 0.01;
 
 pub var piston_p: f64 = 0;
 pub var piston_x: f64 = 1;
@@ -37,10 +37,20 @@ pub fn initArrays(xs: []f64, ps: []f64, cols: []Col) void {
 
     var energy = piston_x;
 
-    for (xs, ps, cols, 0..) |*x, *p, *col, i| {
-        _ = i;
-        x.* = rand.float(f32);
-        p.* = rand.float(f32) * 0.000001;
+    for (ps) |*p| {
+        p.* = rand.float(f64) * 1;
+        energy += p.* * p.* / mu;
+    }
+
+    for (ps) |*p| {
+        p.* /= math.sqrt(energy);
+    }
+
+    piston_x /= math.sqrt(energy);
+
+    for (xs, ps, cols) |*x, *p, *col| {
+        x.* = rand.float(f32) * piston_x;
+        // p.* = rand.float(f32) * 1;
 
         const t_p = getTimeToPiston(x.*, p.*);
         const t_g = getTimeToGround(x.*, p.*);
@@ -53,12 +63,6 @@ pub fn initArrays(xs: []f64, ps: []f64, cols: []Col) void {
         };
         col.* = c;
     }
-
-    for (ps) |*p| {
-        p.* /= math.sqrt(energy);
-    }
-
-    piston_x /= math.sqrt(energy);
 }
 
 pub fn getTimeToGround(x: f64, p: f64) f64 {
@@ -89,8 +93,6 @@ pub fn nextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
     for (cols, 0..) |c, k| {
         const trial_t = c.time;
 
-        // std.debug.print("{d} col: {any}\n", .{ k, c });
-
         std.debug.assert(dt != 0);
 
         if (trial_t < dt) {
@@ -100,32 +102,21 @@ pub fn nextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
         }
     }
 
-    // std.debug.print("dt: {}\n", .{dt});
-    // std.debug.print("j: {}\n", .{j});
-    // std.debug.print("col_type: {}\n", .{col_type});
-
-    // std.debug.print("minimum j: {}\n", .{j});
-
     return .{ .dt = dt, .j = j, .type = col_type };
 }
 
 pub fn advanceXsPs(dt: f64, xs: []f64, ps: []f64) void {
-    piston_x += piston_p * dt - dt * dt / (4);
-    piston_p += -dt / (2);
+    piston_x += piston_p * dt - dt * dt / 4;
+    piston_p += -dt / 2;
 
     for (xs, ps) |*x, *p| {
         x.* += p.* * dt / (mu);
-        // std.debug.print("x: {}\n", .{x.*});
-        // std.debug.print("p: {}\n", .{p.*});
     }
 }
 
 pub fn computeGroundCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) void {
-    // std.debug.print("j: {}\n", .{j});
     ps[j] = -ps[j];
 
-    // Ground collisions don't affect the collision times of other particles
-    // Every collision gets advanced forward by dt
     for (cols) |*c| {
         c.*.time -= dt;
     }
@@ -135,13 +126,9 @@ pub fn computeGroundCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) vo
 }
 
 pub fn computePistCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) void {
-    // std.debug.print("j: {}\n", .{j});
-    // print out old and new ps to check for errors
-    // std.debug.print("old ps[j]: {}\n", .{ps[j]});
     const new_ps = elasticCol(piston_p, ps[j]);
     ps[j] = new_ps.new_p;
     piston_p = new_ps.new_piston_p;
-    // std.debug.print("new ps[j]: {}\n", .{ps[j]});
 
     // A small optimization is used here.
     // We know that if a particle is going to collide with a ground,
@@ -150,8 +137,7 @@ pub fn computePistCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) void
     // any particles that would hit the ground before this collision will
     // still hit the ground after it.
 
-    for (cols, xs, ps, 0..) |*c, x, p, i| {
-        _ = i;
+    for (cols, xs, ps) |*c, x, p| {
         if (c.*.type == ColType.ground) {
             c.*.time -= dt;
         } else if (p > 0) {
@@ -165,13 +151,6 @@ pub fn computePistCol(j: usize, dt: f64, xs: []f64, ps: []f64, cols: []Col) void
             // ambiguous cases we need to solve
             const t_g = getTimeToGround(x, p);
             const t_p = getTimeToPiston(x, p);
-            // std.debug.print("{}: {}\n", .{ i, c.* });
-            // std.debug.print("t_g: {}\n", .{t_g});
-            // std.debug.print("t_p: {}\n", .{t_p});
-            // std.debug.print("ps[{}]: {}\n", .{ i, ps[i] });
-            // std.debug.print("xs[{}]: {}\n", .{ i, xs[i] });
-            // std.debug.print("piston_p: {}\n", .{piston_p});
-            // std.debug.print("piston_x: {}\n", .{piston_x});
             std.debug.assert(t_p != 0);
             c.*.time = @min(t_g, t_p);
             c.*.type = if (t_g < t_p) ColType.ground else ColType.piston;

@@ -30,7 +30,7 @@
     var nParticles = undefined;
     var xMax = 1.5;
     var xBins = 100;
-    var vMax = Math.sqrt(.1);
+    var vMax = .2;
     var vBins = 200;
     vy = d3.scaleLinear().domain([0, .1]).range([height, 0]);
 
@@ -39,8 +39,10 @@
       width = 800 - margin.left - margin.right,
       height = 350 - margin.top - margin.bottom;
 
-    function setConstants(n, m_particle, m_piston, piston_x, x_bins, v_bins, energy) {
+    function setConstants(n, v_max) {
       nParticles = n;
+
+      vMax = v_max;
 
       v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
@@ -97,7 +99,7 @@
             .attr("y", margin.bottom - 4)
             .attr("fill", "currentColor")
             .attr("text-anchor", "end")
-            .text("x (m)")
+            .text("x")
         );
     }
 
@@ -111,7 +113,7 @@
 
       x = d3.scaleLinear().domain([0, 1]).range([0, width]);
 
-      var colorScale = d3.scaleLinear().domain([0, 100]).range(["white", "orange"]);
+      var colorScale = d3.scaleLinear().domain([0, 10]).range(["white", "orange"]);
       svg.selectAll("rect")
         .data(data)
         .enter()
@@ -120,7 +122,8 @@
         .attr("transform", function (d, i) {
           return "translate(" + x(i * binWidth) + ",0)";
         })
-        .attr("width", x(binWidth) - x(0)) // Width of each bin
+        .attr("width", x(binWidth) - x(0)
+        ) // Width of each bin
         .attr("height", height) // Constant height for all bins
         .style("fill", function (d) {
           return colorScale(d);
@@ -151,15 +154,13 @@
             .attr("y", margin.bottom - 4)
             .attr("fill", "currentColor")
             .attr("text-anchor", "end")
-            .text("v (m/s)")
+            .text("p")
         );
     }
 
     initMomentumHistogram()
 
     function updateMomentumHist(bytes) {
-
-
 
       var svg = d3.select("#momentum svg g");
       svg.selectAll("rect").remove();
@@ -174,7 +175,7 @@
         .call(d3.axisLeft(vy));
 
       svg.selectAll("rect")
-        .data(data)
+        .data(normalizedData)
         .enter()
         .append("rect")
         .attr("v", 1)
