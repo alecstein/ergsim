@@ -4,9 +4,8 @@ const math = std.math;
 const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
-const mu = 0.001;
-const T = 10;
-pub const init_v = -0.000001;
+pub const mu = 0.1;
+
 pub var piston_p: f64 = 0;
 pub var piston_x: f64 = 1;
 pub var piston_v: f64 = 0;
@@ -26,7 +25,7 @@ pub const Col = struct {
 };
 
 pub fn initVel() f64 {
-    const v = init_v;
+    const v = 1;
     return v;
 }
 
@@ -36,38 +35,46 @@ pub fn initArrays(xs: []f64, ps: []f64, cols: []Col) void {
     var prng = std.rand.DefaultPrng.init(0);
     const rand = prng.random();
 
+    var energy = piston_x;
+
     for (xs, ps, cols, 0..) |*x, *p, *col, i| {
         _ = i;
         x.* = rand.float(f32);
-        p.* = initVel();
+        p.* = rand.float(f32) * 0.000001;
 
         const t_p = getTimeToPiston(x.*, p.*);
         const t_g = getTimeToGround(x.*, p.*);
+
+        energy += p.* * p.* / mu;
 
         const c = Col{
             .time = @min(t_p, t_g),
             .type = if (t_g < t_p) ColType.ground else ColType.piston,
         };
         col.* = c;
-
-        // std.debug.print("{}: {}, {}, {}\n", .{ i, c, ps[i], xs[i] });
     }
+
+    for (ps) |*p| {
+        p.* /= math.sqrt(energy);
+    }
+
+    piston_x /= math.sqrt(energy);
 }
 
 pub fn getTimeToGround(x: f64, p: f64) f64 {
     if (p >= 0) return math.inf(f64);
-    return -mu * T * x / p;
+    return -mu * x / p;
 }
 
 pub fn getTimeToPiston(x: f64, p: f64) f64 {
     const dp = piston_p - p / mu;
     const dx = piston_x - x;
-    return 2 * T * dp + 2 * T * math.sqrt(dp * dp + dx);
+    return 2 * dp + 2 * math.sqrt(dp * dp + dx);
 }
 
 // Returns the momentum of the particle after collision
 pub fn elasticCol(cur_piston_p: f64, p: f64) struct { new_piston_p: f64, new_p: f64 } {
-    const new_piston_p = 2 * mu * p / (mu + 1) - (mu - 1) * cur_piston_p / (mu + 1);
+    const new_piston_p = 2 * p / (mu + 1) - (mu - 1) * cur_piston_p / (mu + 1);
     const new_p = (mu - 1) * p / (mu + 1) + 2 * mu * cur_piston_p / (mu + 1);
     return .{ .new_piston_p = new_piston_p, .new_p = new_p };
 }
@@ -103,11 +110,11 @@ pub fn nextCollision(cols: []Col) struct { dt: f64, j: usize, type: ColType } {
 }
 
 pub fn advanceXsPs(dt: f64, xs: []f64, ps: []f64) void {
-    piston_x += piston_p * dt / T - dt * dt / (4 * T * T);
-    piston_p += -dt / (2 * T);
+    piston_x += piston_p * dt - dt * dt / (4);
+    piston_p += -dt / (2);
 
     for (xs, ps) |*x, *p| {
-        x.* += p.* * dt / (mu * T);
+        x.* += p.* * dt / (mu);
         // std.debug.print("x: {}\n", .{x.*});
         // std.debug.print("p: {}\n", .{p.*});
     }

@@ -28,28 +28,12 @@
     }
 
     var nParticles = undefined;
-    var particleMass = undefined;
-    var pistonMass = undefined;
+    var xMax = 1.5;
+    var xBins = 100;
+    var vMax = Math.sqrt(.1);
+    var vBins = 200;
+    vy = d3.scaleLinear().domain([0, .1]).range([height, 0]);
 
-    var pistonX0 = undefined;
-    var particleV0 = undefined;
-
-    var totalE = undefined;
-    var beta = undefined;
-    var sigma = undefined;
-
-    var xBins = undefined;
-    var vBins = undefined;
-
-    var beta = undefined;
-    var sigma = undefined;
-
-    var vMax = undefined;
-    var xMax = undefined;
-
-    var x = undefined;
-    var v = undefined;
-    var vy = undefined;
 
     var margin = { top: 50, right: 30, bottom: 30, left: 40 },
       width = 800 - margin.left - margin.right,
@@ -57,26 +41,10 @@
 
     function setConstants(n, m_particle, m_piston, piston_x, x_bins, v_bins, energy) {
       nParticles = n;
-      xBins = x_bins;
-      vBins = v_bins;
-
-      particleMass = m_particle;
-      pistonMass = m_piston;
-      pistonX0 = piston_x;
-
-      totalE = energy;
-      beta = (3 * nParticles + 1) / (2 * energy);
-
-      xMax = totalE / (pistonMass * 9.81);
-
-      sigma = Math.sqrt(2 * totalE / (particleMass * (3 * nParticles + 1)));
-      vMax = 5 * sigma;
-
-      vMax = 5;
 
       v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      vy = d3.scaleLinear().domain([0, .6]).range([height, 0]);
+      vy = d3.scaleLinear().domain([0, 100]).range([height, 0]);
 
       d3.select("#density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
         .text("gas density (particle density) along x-axis, " + nParticles + " particles");
@@ -84,19 +52,12 @@
       drawMomentumPrediction();
     };
 
-    function distributionFunc(v) {
-      var nPrefactor = (3*nParticles + 1)/2;
-      var normPrefactor = 1 / Math.sqrt(2 * Math.PI * totalE * particleMass);
-      console.log(nPrefactor*normPrefactor);
-      return nPrefactor * normPrefactor * (1 - particleMass * (v) ** 2 / (2 * totalE)) ** (3 * nParticles / 2)
-    }
-
     function drawMomentumPrediction() {
 
       var numPoints = 200;
       var lineData = Array.from({ length: numPoints }, (_, i) => {
         var v = - vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
-        return { v: v, y: distributionFunc(v) };
+        return { v: v, y: v };
       });
 
       var line = d3.line()
@@ -116,7 +77,6 @@
 
     function initDensityHist() {
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-
 
       var svg = d3
         .select("#density")
@@ -148,7 +108,10 @@
       svg.selectAll("rect").remove();
       data = rawBytesToCounts(bytes);
       var binWidth = xMax / xBins;
-      var colorScale = d3.scaleLinear().domain([0, nParticles / 50]).range(["white", "orange"]);
+
+      x = d3.scaleLinear().domain([0, 1]).range([0, width]);
+
+      var colorScale = d3.scaleLinear().domain([0, 100]).range(["white", "orange"]);
       svg.selectAll("rect")
         .data(data)
         .enter()
@@ -162,7 +125,6 @@
         .style("fill", function (d) {
           return colorScale(d);
         });
-
     }
 
     function initMomentumHistogram() {
@@ -198,10 +160,12 @@
     function updateMomentumHist(bytes) {
 
 
+
       var svg = d3.select("#momentum svg g");
       svg.selectAll("rect").remove();
 
       data = rawBytesToCounts(bytes);
+
       var totalArea = nParticles * 2 * vMax / 200;
       var normalizedData = data.map((d) => d / totalArea);
       var binWidth = 2 * vMax / vBins;
@@ -210,7 +174,7 @@
         .call(d3.axisLeft(vy));
 
       svg.selectAll("rect")
-        .data(normalizedData)
+        .data(data)
         .enter()
         .append("rect")
         .attr("v", 1)

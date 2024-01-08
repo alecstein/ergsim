@@ -13,7 +13,7 @@ const alloc = std.heap.page_allocator;
 
 const default_n = 1000;
 const x_bins = 100;
-const v_bins = 100;
+const v_bins = 200;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
@@ -22,15 +22,13 @@ pub fn main() !void {
     win = webui.newWindow();
     _ = win.show(html);
 
-    var timer = std.time.Timer();
-
     const params = try getArgs();
     const n = params.n;
 
     var buf = try std.fmt.allocPrint(alloc, "setConstants({}, {}, {}, {}, {});", .{ n, sim.m_particle, sim.m_piston, sim.piston_x, 1 });
     win.run(buf);
 
-    std.debug.print("Particles: {d}\n", .{n});
+    // std.debug.print("Particles: {d}\n", .{n});
 
     var xs = try alloc.alloc(f64, n);
     var ps = try alloc.alloc(f64, n);
@@ -45,28 +43,31 @@ pub fn main() !void {
 
     var t: f64 = 0;
     var ct: usize = 0; // collision count
-    var t_ct = timer.read();
 
     while (true) {
         const dt = stepForward(cols, xs, ps);
         t += dt;
         ct += 1;
 
+        // std.debug.print("xs: {any}", .{xs});
+
         const xsBytes = std.mem.sliceAsBytes(xs);
         _ = xsBytes;
         const psBytes = std.mem.sliceAsBytes(ps);
         _ = psBytes;
 
-        var xHist = buildHistogram(xs, 0, 1, x_bins);
+        var xHist = buildHistogram(xs, 0, 1.5, x_bins);
         // std.debug.print("xHist: {any}\n", .{xHist});
         var xHistBytes = std.mem.asBytes(&xHist);
         // std.debug.print("xHistBytes: {any}\n", .{xHistBytes});
 
-        var pHist = buildHistogram(ps, -sim.init_v * 4, sim.init_v * 4, v_bins);
+        // std.debug.print("mu: {}\n", .{sim.mu});
+        // std.debug.print("ps: {any}\n", .{ps});
+
+        var pHist = buildHistogram(ps, -math.sqrt(sim.mu) * 0.2, math.sqrt(sim.mu) * 0.2, v_bins);
         var pHistBytes = std.mem.asBytes(&pHist);
 
-        if (timer.read() > t_ct + 50000000) {
-            t_ct = timer.read();
+        if (ct % 10000 == 0) {
             win.sendRaw(
                 "updateDensityHist",
                 xHistBytes,
@@ -113,6 +114,8 @@ fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n: usize) [n]u32 
     var hist: [n]u32 = undefined;
     @memset(&hist, 0);
 
+    var sum: usize = 0;
+
     for (arr) |x| {
         if (x < lower or x > upper) {
             continue;
@@ -122,7 +125,9 @@ fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n: usize) [n]u32 
         const i = @as(usize, @intFromFloat((x - lower) / step));
         if (i >= 0 and i < n) {
             hist[i] += 1;
+            sum += 1;
         }
     }
+    // std.debug.print("hist: {any}\n", .{hist});
     return hist;
 }
