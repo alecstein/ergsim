@@ -33,20 +33,20 @@
 
     var N = undefined;
     var xMax = 1.5;
-    var xBins = 400;
+    var xBins = 300;
     var vMax = undefined;
     var mu = undefined;
-    var vBins = 400;
+    var vBins = 300;
     // vy = d3.scaleLinear().domain([0, 100]).range([height, 0]);
 
 
     function setConstants(n, mu_) {
       N = n;
 
-      vMax = Math.sqrt(mu_) * .1;
+      vMax = Math.sqrt(mu_)*0.05;
       mu = mu_;
 
-      v = d3.scaleLinear().domain([-Math.sqrt(mu) / 20, Math.sqrt(mu) / 20]).range([0, width]);
+      v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
       vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
 
@@ -66,7 +66,7 @@
     }
 
     function drawMomentumPrediction(mu, vMax) {
-      var numPoints = 200;
+      var numPoints = 1000;
 
       var lineData = Array.from({ length: numPoints }, (_, i) => {
         var vVal = -vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
@@ -83,10 +83,8 @@
         .datum(lineData)
         .attr("fill", "none")
         .attr("stroke", "blue")
-        .attr("stroke-width", 1)
+        .attr("stroke-width", 2)
         .attr("d", line);
-
-      console.log(mu);
 
       var areaUnderLine = 0;
       for (let i = 0; i < lineData.length - 1; i++) {
@@ -95,7 +93,6 @@
         let height = lineData[i + 1].v - lineData[i].v;
         areaUnderLine += 0.5 * (base1 + base2) * height;
       }
-      console.log("Area under the blue line:", areaUnderLine);
 
     };
 
@@ -136,7 +133,7 @@
 
       var data = rawBytesToCounts(bytes);
       var binWidth = xMax / xBins;
-      var x = d3.scaleLinear().domain([0, 1]).range([0, width]);
+      var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
       var colorScale = d3.scaleLinear().domain([0, N / 50]).range(["white", "orange"]);
 
       // Bind the data to the rects
@@ -213,19 +210,7 @@
       normalizedData.forEach(d => {
         areaUnderHistogram += d * binWidth;
       });
-      console.log("Area under the histogram:", areaUnderHistogram);
 
-
-
-      // vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
-
-      // svg.append("g").call(d3.axisLeft(vy));
-
-      // // Update the axis if necessary
-      // svg.select(".axis")
-      //   .call(d3.axisLeft(vy));
-
-      // Bind the data to the rects
       var rects = svg.selectAll("rect")
         .data(normalizedData);
 

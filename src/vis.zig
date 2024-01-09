@@ -13,8 +13,9 @@ const alloc = std.heap.page_allocator;
 
 const default_n = 1000;
 const default_mu = 0.001;
-const x_bins = 400;
-const v_bins = 400;
+const mu = 0.001;
+const x_bins = 300;
+const v_bins = 300;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
@@ -30,12 +31,9 @@ pub fn main() !void {
     const params = try getArgs();
     const n = params.n;
 
-    const p_max = sim.mu * 0.1;
-    _ = p_max;
-
     var buf = try std.fmt.allocPrint(alloc, "setConstants({}, {});", .{
         n,
-        sim.mu,
+        mu,
     });
     win.run(buf);
 
@@ -48,7 +46,7 @@ pub fn main() !void {
         alloc.free(cols);
     }
 
-    sim.initArrays(xs, ps, cols);
+    sim.initArrays(mu, xs, ps, cols);
 
     while (true) {
         stepForward(cols, xs, ps);
@@ -56,13 +54,12 @@ pub fn main() !void {
         var xHist = buildHistogram(xs, 0, 1.5, x_bins);
         var xHistBytes = std.mem.asBytes(&xHist);
 
-        var pHist = buildHistogram(ps, -math.sqrt(sim.mu) * 0.05, math.sqrt(sim.mu) * 0.05, v_bins);
+        var pHist = buildHistogram(ps, -math.sqrt(mu) * 0.05, math.sqrt(mu) * 0.05, v_bins);
         var pHistBytes = std.mem.asBytes(&pHist);
 
         if (timer.read() > refresh_ns) {
             timer.reset();
 
-            // std.debug.print("ps: {any}\n", .{ps});
             win.sendRaw(
                 "updateDensityHist",
                 xHistBytes,
@@ -94,19 +91,19 @@ fn stepForward(cols: []Col, xs: []f64, ps: []f64) void {
     const j = next_col.j;
     const col_type = next_col.type;
 
-    sim.advanceXsPs(next_col.dt, xs, ps);
+    sim.advanceXsPs(mu, next_col.dt, xs, ps);
 
     if (col_type == ColType.ground) {
-        sim.computeGroundCol(j, dt, xs, ps, cols);
+        sim.computeGroundCol(mu, j, dt, xs, ps, cols);
     } else {
-        sim.computePistCol(j, dt, xs, ps, cols);
+        sim.computePistCol(mu, j, dt, xs, ps, cols);
     }
 }
 
-fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n: usize) [n]u32 {
-    const step = (upper - lower) / @as(f64, n);
-    var hist: [n]u32 = undefined;
-    @memset(&hist, 0);
+fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n_bins: usize) [n_bins]u32 {
+    const step = (upper - lower) / @as(f64, n_bins);
+    var hist: [n_bins]u32 = undefined;
+    @memset(&hist, 0); // zero the initial array
 
     var sum: usize = 0;
 
@@ -114,10 +111,9 @@ fn buildHistogram(arr: []f64, lower: f64, upper: f64, comptime n: usize) [n]u32 
         if (x < lower or x > upper) {
             continue;
         }
-        // std.debug.print("x: {}", .{x});
 
         const i = @as(usize, @intFromFloat((x - lower) / step));
-        if (i >= 0 and i < n) {
+        if (i >= 0 and i < n_bins) {
             hist[i] += 1;
             sum += 1;
         }

@@ -36,7 +36,7 @@ pub fn main() !void {
         alloc.free(cols);
     }
 
-    sim.initArrays(xs, ps, cols);
+    sim.initArrays(0.001, xs, ps, cols);
 
     var t: f64 = 0;
     var ct: usize = 0; // collision count
