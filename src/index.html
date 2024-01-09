@@ -27,46 +27,52 @@
       return data;
     }
 
-    var nParticles = undefined;
+    var margin = { top: 50, right: 30, bottom: 30, left: 40 };
+    var width = 800 - margin.left - margin.right;
+    var height = 300 - margin.top - margin.bottom;
+
+    var N = undefined;
     var xMax = 1.5;
-    var xBins = 100;
-    var vMax = .2;
+    var xBins = 400;
+    var vMax = undefined;
     var mu = undefined;
-    var vBins = 1000;
-    vy = d3.scaleLinear().domain([0, .1]).range([height, 0]);
+    var vBins = 400;
+    // vy = d3.scaleLinear().domain([0, 100]).range([height, 0]);
 
-
-    var margin = { top: 50, right: 30, bottom: 30, left: 40 },
-      width = 800 - margin.left - margin.right,
-      height = 350 - margin.top - margin.bottom;
 
     function setConstants(n, mu_) {
-      nParticles = n;
+      N = n;
 
       vMax = Math.sqrt(mu_) * .1;
       mu = mu_;
 
-      v = d3.scaleLinear().domain([-mu, mu]).range([0, width]);
+      v = d3.scaleLinear().domain([-Math.sqrt(mu) / 20, Math.sqrt(mu) / 20]).range([0, width]);
       x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      console.log(height);
-      vy = d3.scaleLinear().domain([0, 1000*1/Math.sqrt(Math.PI * mu)]).range([height, 0]);
+      vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
 
       d3.select("#density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
-        .text("gas density (particle density) along x-axis, " + nParticles + " particles");
+        .text("gas density (particle density) along x-axis, " + N + " particles");
 
       drawMomentumPrediction(mu, vMax);
     };
 
+    function rho(p, mu, N) {
+      const part1 = 1 / (Math.sqrt(Math.PI * mu));
+      const part2 = Math.sqrt((3 * N + 1) / 2);
+      const part3 = (1 - Math.pow(p, 2) / mu);
+      const part4 = Math.pow(part3, 3 * N / 2);
+
+      return part1 * part2 * part4;
+    }
+
     function drawMomentumPrediction(mu, vMax) {
       var numPoints = 200;
-      var scaleFactor = Math.sqrt(Math.PI * mu);
 
       var lineData = Array.from({ length: numPoints }, (_, i) => {
-        var v = -vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
-        var y = Math.exp(-Math.pow(v, 2) / mu) / scaleFactor; // Normalized Gaussian function
-        return { v: v, y: y };
+        var vVal = -vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
+        var y = rho(vVal, mu, N); // Normalized Gaussian function
+        return { v: vVal, y: y };
       });
-
 
       var line = d3.line()
         .x(function (d) { return v(d.v); })
@@ -79,6 +85,18 @@
         .attr("stroke", "blue")
         .attr("stroke-width", 1)
         .attr("d", line);
+
+      console.log(mu);
+
+      var areaUnderLine = 0;
+      for (let i = 0; i < lineData.length - 1; i++) {
+        let base1 = lineData[i].y;
+        let base2 = lineData[i + 1].y;
+        let height = lineData[i + 1].v - lineData[i].v;
+        areaUnderLine += 0.5 * (base1 + base2) * height;
+      }
+      console.log("Area under the blue line:", areaUnderLine);
+
     };
 
 
@@ -93,6 +111,7 @@
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
 
       svg
         .append("g")
@@ -118,7 +137,7 @@
       var data = rawBytesToCounts(bytes);
       var binWidth = xMax / xBins;
       var x = d3.scaleLinear().domain([0, 1]).range([0, width]);
-      var colorScale = d3.scaleLinear().domain([0, 500]).range(["white", "orange"]);
+      var colorScale = d3.scaleLinear().domain([0, N / 50]).range(["white", "orange"]);
 
       // Bind the data to the rects
       var rects = svg.selectAll("rect")
@@ -126,7 +145,7 @@
 
       // Enter selection: Add new rects for new data
       rects.enter().append("rect")
-        .attr("x", 1)
+        // .attr("x", 1)
         .attr("width", x(binWidth) - x(0)) // Width of each bin
         .attr("height", height) // Constant height for all bins
         .merge(rects) // Merge enter and update selections
@@ -138,7 +157,7 @@
         });
 
       // Exit selection: Remove rects that are no longer needed
-      rects.exit().remove();
+      // rects.exit().remove();
     }
 
     function initMomentumHistogram() {
@@ -153,8 +172,16 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+      vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
+
+      svg.append("g")
+        .attr("class", "y-axis")
+        .call(d3.axisLeft(vy));
+
+
       svg
         .append("g")
+        .attr("class", "x-axis")
         .attr("transform", "translate(0," + height + ")")
         .call(d3.axisBottom(v))
         .call((g) =>
@@ -174,13 +201,29 @@
       var svg = d3.select("#momentum svg g");
 
       var data = rawBytesToCounts(bytes);
-      var totalArea = nParticles * 2 * vMax / 200;
-      var normalizedData = data.map((d) => d / totalArea);
       var binWidth = 2 * vMax / vBins;
+      var totalArea = N * 2 * vMax / vBins;
+      var normalizedData = data.map((d) => d / totalArea);
 
-      // Update the axis if necessary
-      svg.select(".axis")
-        .call(d3.axisLeft(vy));
+      svg.select(".y-axis").call(d3.axisLeft(vy));
+      svg.select(".x-axis").call(d3.axisBottom(v));
+
+      var areaUnderHistogram = 0;
+      var binWidth = 2 * vMax / vBins; // Width of each bin
+      normalizedData.forEach(d => {
+        areaUnderHistogram += d * binWidth;
+      });
+      console.log("Area under the histogram:", areaUnderHistogram);
+
+
+
+      // vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
+
+      // svg.append("g").call(d3.axisLeft(vy));
+
+      // // Update the axis if necessary
+      // svg.select(".axis")
+      //   .call(d3.axisLeft(vy));
 
       // Bind the data to the rects
       var rects = svg.selectAll("rect")
@@ -188,11 +231,11 @@
 
       // Enter selection: Create new rects for new data
       rects.enter().append("rect")
-        .attr("width", 3)
-        .style("fill", "black")
+        .attr("width", v(binWidth) - v(0))// Width of each bin
+        // .style("fill", "black ")
         // Set initial attributes for new rects here (if necessary)
         .merge(rects) // Merge enter and update selections
-        .attr("v", 1)
+        // .attr("v", 1)
         .attr("transform", function (d, i) {
           return "translate(" + v(i * binWidth - vMax) + ",0)";
         })
@@ -200,7 +243,12 @@
         .attr("height", function (d) { return height - vy(d); });
 
       // Exit selection: Remove rects that are no longer needed
-      rects.exit().remove();
+      // rects.exit().remove();
+
+      svg.select("#momentum > svg > g > path")
+        .raise();
+
+      // drawMomentumPrediction(mu, vMax);
     }
 
 

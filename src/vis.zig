@@ -12,13 +12,14 @@ const Allocator = std.mem.Allocator;
 const alloc = std.heap.page_allocator;
 
 const default_n = 1000;
-const x_bins = 100;
-const v_bins = 1000;
+const default_mu = 0.001;
+const x_bins = 400;
+const v_bins = 400;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
 
-const refresh_ns = 20000000;
+const refresh_ns = 50000000;
 
 pub fn main() !void {
     win = webui.newWindow();
@@ -55,11 +56,13 @@ pub fn main() !void {
         var xHist = buildHistogram(xs, 0, 1.5, x_bins);
         var xHistBytes = std.mem.asBytes(&xHist);
 
-        var pHist = buildHistogram(ps, -math.sqrt(sim.mu), math.sqrt(sim.mu), v_bins);
+        var pHist = buildHistogram(ps, -math.sqrt(sim.mu) * 0.05, math.sqrt(sim.mu) * 0.05, v_bins);
         var pHistBytes = std.mem.asBytes(&pHist);
 
         if (timer.read() > refresh_ns) {
             timer.reset();
+
+            // std.debug.print("ps: {any}\n", .{ps});
             win.sendRaw(
                 "updateDensityHist",
                 xHistBytes,
