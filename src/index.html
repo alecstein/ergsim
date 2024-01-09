@@ -14,29 +14,17 @@
   Momentum
   <div id="momentum"></div>
   <script>
-    function rawBytesToCounts(byteArray) {
-      const unpaddedBytes = byteArray.slice(6, -1);
-      const uint8Array = new Uint8Array(unpaddedBytes);
-      const buffer = uint8Array.buffer;
-      const dataView = new DataView(buffer);
-      const numInts = buffer.byteLength / 4; // Each U32 integer is 4 bytes
-      let data = [];
-      for (let i = 0; i < numInts; i++) {
-        data[i] = dataView.getUint32(i * 4, true); // Read 32-bit integers
-      }
-      return data;
-    }
-
-    var margin = { top: 50, right: 30, bottom: 30, left: 40 };
-    var width = 800 - margin.left - margin.right;
-    var height = 300 - margin.top - margin.bottom;
+    const marginTop = 40;
+    const marginBottom = 40;
+    const marginLeft = 40;
+    const marginRight = 40;
+    const width = 800 - marginLeft - marginRight;
+    const height = 300 - marginTop - marginBottom;
 
     var N = undefined;
     var xMax = 1.5;
     var vMax = undefined;
-    var mu = undefined;
-    // vy = d3.scaleLinear().domain([0, 100]).range([height, 0]);
-
+    var mu = undefined;    
 
     function setConstants(n, mu_) {
       N = n;
@@ -102,10 +90,10 @@
       var svg = d3
         .select("#density")
         .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
+        .attr("width", width + marginLeft + marginRight)
+        .attr("height", height + marginTop + marginBottom)
         .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
 
       svg
@@ -116,7 +104,7 @@
           g
             .append("text")
             .attr("x", width)
-            .attr("y", margin.bottom - 4)
+            .attr("y", marginBottom - 4)
             .attr("fill", "currentColor")
             .attr("text-anchor", "end")
             .text("x")
@@ -156,17 +144,19 @@
       // rects.exit().remove();
     }
 
-    function initMomentumHistogram() {
-
-      v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
+    function createPHist() {
 
       var svg = d3
         .select("#momentum")
         .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
+        .attr("width", width + marginLeft + marginRight)
+        .attr("height", height + marginTop + marginBottom)
         .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
+
+      const lim = Math.sqrt(mu)*0.05;
+
+      v = d3.scaleLinear([-lim, lim], [0, width]);
 
       vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
 
@@ -184,14 +174,14 @@
           g
             .append("text")
             // .attr("x", width)
-            .attr("y", margin.bottom - 4)
+            .attr("y", marginBottom - 4)
             .attr("fill", "currentColor")
             .attr("text-anchor", "end")
             .text("p")
         );
     }
 
-    initMomentumHistogram()
+    createPHist()
 
     function updateMomentumHist(bytes) {
       var svg = d3.select("#momentum svg g");
@@ -236,6 +226,18 @@
       // drawMomentumPrediction(mu, vMax);
     }
 
+    function rawBytesToCounts(byteArray) {
+      const unpaddedBytes = byteArray.slice(6, -1);
+      const uint8Array = new Uint8Array(unpaddedBytes);
+      const buffer = uint8Array.buffer;
+      const dataView = new DataView(buffer);
+      const numInts = buffer.byteLength / 4; // Each U32 integer is 4 bytes
+      let data = [];
+      for (let i = 0; i < numInts; i++) {
+        data[i] = dataView.getUint32(i * 4, true); // Read 32-bit integers
+      }
+      return data;
+    }
 
 
   </script>
