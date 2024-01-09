@@ -158,7 +158,7 @@
 
       v = d3.scaleLinear([-lim, lim], [0, width]);
 
-      vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
+      vy = d3.scaleLinear([0, rho(0, mu, N)*1.2], [height, 0]);
 
       svg.append("g")
         .attr("class", "y-axis")
