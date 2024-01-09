@@ -33,10 +33,8 @@
 
     var N = undefined;
     var xMax = 1.5;
-    var xBins = 300;
     var vMax = undefined;
     var mu = undefined;
-    var vBins = 300;
     // vy = d3.scaleLinear().domain([0, 100]).range([height, 0]);
 
 
@@ -132,7 +130,8 @@
       var svg = d3.select("#density svg g");
 
       var data = rawBytesToCounts(bytes);
-      var binWidth = xMax / xBins;
+      const nBins = data.length;
+      var binWidth = xMax / nBins;
       var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
       var colorScale = d3.scaleLinear().domain([0, N / 50]).range(["white", "orange"]);
 
@@ -198,15 +197,16 @@
       var svg = d3.select("#momentum svg g");
 
       var data = rawBytesToCounts(bytes);
-      var binWidth = 2 * vMax / vBins;
-      var totalArea = N * 2 * vMax / vBins;
+      const nBins = data.length;
+      var binWidth = 2 * vMax / nBins;
+      var totalArea = N * 2 * vMax / nBins;
       var normalizedData = data.map((d) => d / totalArea);
 
       svg.select(".y-axis").call(d3.axisLeft(vy));
       svg.select(".x-axis").call(d3.axisBottom(v));
 
       var areaUnderHistogram = 0;
-      var binWidth = 2 * vMax / vBins; // Width of each bin
+      var binWidth = 2 * vMax / nBins; // Width of each bin
       normalizedData.forEach(d => {
         areaUnderHistogram += d * binWidth;
       });
