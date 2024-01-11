@@ -28,7 +28,7 @@ zig build -Drelease
 
 Then to run the simulation,
 
-`./zig-out/bin/viz <number-of-particles>`
+`./zig-out/bin/vis <number-of-particles>`
 
 or
 
