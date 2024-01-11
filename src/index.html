@@ -9,37 +9,33 @@
 </head>
 
 <body>
-  Gas
   <div id="density"></div>
-  Momentum
-  <div id="momentum"></div>
+  <div id="momentum"></div></div>
   <script>
+
+    const width = 1000;
+    const height = 400
+
     const marginTop = 40;
     const marginBottom = 40;
     const marginLeft = 40;
     const marginRight = 40;
-    const width = 800 - marginLeft - marginRight;
-    const height = 300 - marginTop - marginBottom;
 
-    var N = undefined;
-    var xMax = 1.5;
-    var vMax = undefined;
-    var mu = undefined;    
+    var n = undefined;
+    const xLim = 1.2;
+    var pLim = undefined;
+    var mu = undefined;
 
-    function setConstants(n, mu_) {
-      N = n;
-
-      vMax = Math.sqrt(mu_)*0.05;
+    function setConstants(n_, mu_) {
+      n = n_;
+      pLim = Math.sqrt(mu_) * 0.05;
       mu = mu_;
 
-      v = d3.scaleLinear().domain([-vMax, vMax]).range([0, width]);
-      x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      vy = d3.scaleLinear().domain([0, 1.5 * rho(0, mu, N)]).range([height, 0]);
+      createDHist();
 
-      d3.select("#density > svg:nth-child(1) > g:nth-child(1) > text:nth-child(2)")
-        .text("gas density (particle density) along x-axis, " + N + " particles");
+      createPHist()
 
-      drawMomentumPrediction(mu, vMax);
+      drawMomentumPrediction();
     };
 
     function rho(p, mu, N) {
@@ -51,179 +47,212 @@
       return part1 * part2 * part4;
     }
 
-    function drawMomentumPrediction(mu, vMax) {
+    function drawMomentumPrediction() {
+      const lim = Math.sqrt(mu) * 0.05;
+
+      const x = d3.scaleLinear([-lim, lim], [0, width - marginRight]);
+      const y = d3.scaleLinear([0, rho(0, mu, n) * 1.6], [height, 0]);
+
+
       var numPoints = 1000;
 
-      var lineData = Array.from({ length: numPoints }, (_, i) => {
-        var vVal = -vMax + (i / numPoints) * (2 * vMax); // scale i to [-vMax, vMax]
-        var y = rho(vVal, mu, N); // Normalized Gaussian function
-        return { v: vVal, y: y };
+      var linePoints = Array.from({ length: numPoints }, (_, i) => {
+        var p = -lim + (i / numPoints) * (2 * lim);
+        var y = rho(p, mu, n);
+        return { p: p, y: y };
       });
 
       var line = d3.line()
-        .x(function (d) { return v(d.v); })
-        .y(function (d) { return vy(d.y); });
+        .x(d => x(d.p))
+        .y(d => y(d.y));
 
-      d3.select("#momentum > svg > g")
+      d3.select("#momentum svg .data-pane")
         .append("path")
-        .datum(lineData)
+        .datum(linePoints)
+        .attr("transform", `translate(0, ${-marginBottom})`)
         .attr("fill", "none")
-        .attr("stroke", "blue")
+        .attr("stroke", "red")
         .attr("stroke-width", 2)
-        .attr("d", line);
+        .attr("d", line)
+        ;
 
-      var areaUnderLine = 0;
-      for (let i = 0; i < lineData.length - 1; i++) {
-        let base1 = lineData[i].y;
-        let base2 = lineData[i + 1].y;
-        let height = lineData[i + 1].v - lineData[i].v;
-        areaUnderLine += 0.5 * (base1 + base2) * height;
-      }
+        //  confirm that the area under the line is equal to one:
+        var totalArea = 0;
+        for (let i = 0; i < numPoints - 1; i++) {
+          var p1 = linePoints[i];
+          var p2 = linePoints[i + 1];
+          var dx = p2.p - p1.p;
+          var y1 = p1.y;
+          var y2 = p2.y;
+          var dy = y2 - y1;
+          var area = dx * (y1 + dy / 2);
+          totalArea += area;
+        }
+        console.log("total area under line: " + totalArea);
 
     };
 
-
-
-    function initDensityHist() {
-      x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-
-      var svg = d3
-        .select("#density")
+    function createDHist() {
+      // Create the SVG container
+      const scale = 0.5;
+      const svg = d3.select("#density")
         .append("svg")
-        .attr("width", width + marginLeft + marginRight)
-        .attr("height", height + marginTop + marginBottom)
-        .append("g")
-        .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
+        .attr("viewBox", [0, 0, width, height * scale])
+        .attr("width", width)
+        .style("outline", "thin solid black")
+        .style("max-width", "100%")
+        .style("height", "auto")
+        .style("background", "#000")
 
+        ;
 
-      svg
-        .append("g")
-        .attr("transform", "translate(0," + height + ")")
+      x = d3.scaleLinear().domain([0, xLim]).range([0, width]);
+
+      const xAxisGroup = svg.append("g")
+        .attr("transform", `translate(${0}, ${height * scale - marginBottom})`)
+        .style("color", "white")
         .call(d3.axisBottom(x))
-        .call((g) =>
-          g
-            .append("text")
-            .attr("x", width)
-            .attr("y", marginBottom - 4)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "end")
-            .text("x")
-        );
+        ;
+
+      xAxisGroup.append("text")
+        .attr("class", "axis-label")
+        .attr("x", width / 2)
+        .attr("y", 30)
+        .style("text-anchor", "middle")
+        .style("fill", "white")
+        .text("gas density");
+
+
+      svg.append("g")
+        .append("rect")
+        .attr("width", width)
+        .attr("height", height * scale - marginBottom)
+        .attr("fill", "white");
+
+      svg.append("g")
+        .attr("class", "data-pane");
+
+      var verticalValue = 2 / 3;
+
+      svg.append("line")
+        .attr("x1", x(verticalValue))
+        .attr("x2", x(verticalValue))
+        .attr("y1", 0)
+        .attr("y2", height * scale - marginBottom)
+        .attr("stroke", "red")
+        .attr("stroke-width", 2);// Line width
+
     }
 
-    initDensityHist();
-
-    function updateDensityHist(bytes) {
-
-      var svg = d3.select("#density svg g");
-
-      var data = rawBytesToCounts(bytes);
-      const nBins = data.length;
-      var binWidth = xMax / nBins;
-      var x = d3.scaleLinear().domain([0, xMax]).range([0, width]);
-      var colorScale = d3.scaleLinear().domain([0, N / 50]).range(["white", "orange"]);
-
-      // Bind the data to the rects
-      var rects = svg.selectAll("rect")
-        .data(data);
-
-      // Enter selection: Add new rects for new data
-      rects.enter().append("rect")
-        // .attr("x", 1)
-        .attr("width", x(binWidth) - x(0)) // Width of each bin
-        .attr("height", height) // Constant height for all bins
-        .merge(rects) // Merge enter and update selections
-        .attr("transform", function (d, i) {
-          return "translate(" + x(i * binWidth) + ",0)";
-        })
-        .style("fill", function (d) {
-          return colorScale(d);
-        });
-
-      // Exit selection: Remove rects that are no longer needed
-      // rects.exit().remove();
-    }
 
     function createPHist() {
 
-      var svg = d3
-        .select("#momentum")
+      // Create the SVG container
+      const svg = d3.select("#momentum")
         .append("svg")
-        .attr("width", width + marginLeft + marginRight)
-        .attr("height", height + marginTop + marginBottom)
-        .append("g")
-        .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
+        .attr("viewBox", [0, 0, width, height])
+        .attr("width", width)
+        .attr("height", height)
+        .style("outline", "thin solid black")
+        .style("max-width", "100%")
+        .style("height", "auto")
+        .style("background", "black")
+        ;
 
-      const lim = Math.sqrt(mu)*0.05;
+      const lim = Math.sqrt(mu) * 0.05;
 
-      v = d3.scaleLinear([-lim, lim], [0, width]);
+      x = d3.scaleLinear([-lim, lim], [marginLeft, width]);
+      y = d3.scaleLinear([0, rho(0, mu, n) * 1.6], [height, marginBottom]);
+      var xAxis = d3.axisBottom(x).tickFormat(function (d) {
+        return (d / mu).toFixed(1) + '\u03BC'; // Displaying as a fraction of mu
+      });
 
-      vy = d3.scaleLinear([0, rho(0, mu, N)*1.2], [height, 0]);
+      // Add the x-axis
+      const xAxisGroup = svg.append("g")
+        .attr("transform", `translate(${0}, ${height-marginBottom})`)
+        .style("color", "white")
+        .call(xAxis)
+        ;
+
+      xAxisGroup.append("text")
+        .attr("class", "axis-label")
+        .attr("x", width / 2)
+        .attr("y", 30)
+        .style("text-anchor", "middle")
+        .style("fill", "white")
+        .text("momentum (p), shown in units of \u03BC");
+
+
+      // Add the y-axis
+      svg.append("g")
+        .attr("transform", `translate(${marginLeft}, ${-marginBottom})`)
+        .style("color", "white")
+        .call(d3.axisLeft(y));
+      ;
 
       svg.append("g")
-        .attr("class", "y-axis")
-        .call(d3.axisLeft(vy));
+        .attr("transform", `translate(${marginLeft}, 0)`)
+        .attr("class", "data-pane-background")
+        .append("rect")
+        .attr("width", width - marginLeft)
+        .attr("height", height - marginBottom)
+        .attr("fill", "white");
 
+      svg.append("g")
+        .attr("transform", `translate(${marginLeft}, 0)`)
+        .attr("class", "data-pane");
 
-      svg
-        .append("g")
-        .attr("class", "x-axis")
-        .attr("transform", "translate(0," + height + ")")
-        .call(d3.axisBottom(v))
-        .call((g) =>
-          g
-            .append("text")
-            // .attr("x", width)
-            .attr("y", marginBottom - 4)
-            .attr("fill", "currentColor")
-            .attr("text-anchor", "end")
-            .text("p")
-        );
     }
 
-    createPHist()
+    function updateDensityHist(bytes) {
 
-    function updateMomentumHist(bytes) {
-      var svg = d3.select("#momentum svg g");
+      var svg = d3.select("#density svg .data-pane");
+
+      const scale = 0.5;
 
       var data = rawBytesToCounts(bytes);
       const nBins = data.length;
-      var binWidth = 2 * vMax / nBins;
-      var totalArea = N * 2 * vMax / nBins;
+      var binWidth = xLim / nBins;
+      var x = d3.scaleLinear().domain([0, xLim]).range([0, width]);
+      var colorScale = d3.scaleLinear().domain([0, n / 50]).range(["white", "black"]);
+
+      svg.selectAll("rect")
+        .data(data)
+        .join("rect")
+        .attr("width", x(binWidth) - x(0))
+        .attr("x", (d, i) => x(i * binWidth))
+        .attr("height", height * scale - marginBottom)
+        .style("fill", d => colorScale(d))
+        ;
+
+    }
+
+
+    function updateMomentumHist(bytes) {
+      var svg = d3.select("#momentum svg .data-pane");
+
+      var data = rawBytesToCounts(bytes);
+      const nBins = data.length;
+      var binWidth = 2 * pLim / nBins;
+      var totalArea = n * 2 * pLim / nBins;
       var normalizedData = data.map((d) => d / totalArea);
 
-      svg.select(".y-axis").call(d3.axisLeft(vy));
-      svg.select(".x-axis").call(d3.axisBottom(v));
+      const lim = Math.sqrt(mu) * 0.05;
 
-      var areaUnderHistogram = 0;
-      var binWidth = 2 * vMax / nBins; // Width of each bin
-      normalizedData.forEach(d => {
-        areaUnderHistogram += d * binWidth;
-      });
+      x = d3.scaleLinear([-lim, lim], [marginLeft, width]);
+      y = d3.scaleLinear([0, rho(0, mu, n) * 1.6], [height, marginBottom]);
 
-      var rects = svg.selectAll("rect")
-        .data(normalizedData);
+      svg.selectAll("rect")
+        .data(normalizedData)
+        .join("rect")
+        .attr("width", x(binWidth) - x(0) - .5)
+        .attr("x", (d, i) => x(i * binWidth-lim) - marginLeft) 
+        .attr("y", (d) => y(d) - marginBottom)
+        .attr("height", (d) => height - y(d))
+        .attr("fill", "black")
+        ;
 
-      // Enter selection: Create new rects for new data
-      rects.enter().append("rect")
-        .attr("width", v(binWidth) - v(0))// Width of each bin
-        // .style("fill", "black ")
-        // Set initial attributes for new rects here (if necessary)
-        .merge(rects) // Merge enter and update selections
-        // .attr("v", 1)
-        .attr("transform", function (d, i) {
-          return "translate(" + v(i * binWidth - vMax) + ",0)";
-        })
-        .attr("y", function (d) { return vy(d); })
-        .attr("height", function (d) { return height - vy(d); });
-
-      // Exit selection: Remove rects that are no longer needed
-      // rects.exit().remove();
-
-      svg.select("#momentum > svg > g > path")
-        .raise();
-
-      // drawMomentumPrediction(mu, vMax);
+      d3.select("#momentum svg .data-pane path").raise();
     }
 
     function rawBytesToCounts(byteArray) {

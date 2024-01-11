@@ -14,8 +14,8 @@ const alloc = std.heap.page_allocator;
 const default_n = 1000;
 const default_mu = 0.001;
 const mu = 0.001;
-const x_bins = 300;
-const v_bins = 300;
+const x_bins = 200;
+const v_bins = 200;
 
 pub const Col = sim.Col;
 pub const ColType = sim.ColType;
@@ -51,7 +51,7 @@ pub fn main() !void {
     while (true) {
         stepForward(cols, xs, ps);
 
-        var xHist = buildHistogram(xs, 0, 1.5, x_bins);
+        var xHist = buildHistogram(xs, 0, 1.2, x_bins);
         var xHistBytes = std.mem.asBytes(&xHist);
 
         var pHist = buildHistogram(ps, -math.sqrt(mu) * 0.05, math.sqrt(mu) * 0.05, v_bins);
