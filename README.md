@@ -30,16 +30,6 @@ Then to run the simulation,
 
 `./zig-out/bin/vis <number-of-particles>`
 
-or
-
-`./zig-out/bin/ergsim <number-of-particles> <time>`
-
-You can also run it without any arguments and it'll run its default. To run the sim with gravity (but no visualizations), do
-
-`./zig-out/bin/ergsim_grav <number-of-particles> <time>`
-
-This is a live recording! Works in real time!
-
 https://github.com/alecstein/ergsim/assets/16236421/8d250379-dfd1-4092-82fc-6ace1afd737f
 
 ### Diary
