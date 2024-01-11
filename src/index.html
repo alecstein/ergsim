@@ -51,7 +51,7 @@
       const lim = Math.sqrt(mu) * 0.05;
 
       const x = d3.scaleLinear([-lim, lim], [0, width - marginRight]);
-      const y = d3.scaleLinear([0, rho(0, mu, n) * 1.6], [height, 0]);
+      const y = d3.scaleLinear([0, rho(0, mu, n) * 1.6], [height, marginBottom]);
 
 
       var numPoints = 1000;
@@ -75,21 +75,6 @@
         .attr("stroke-width", 2)
         .attr("d", line)
         ;
-
-        //  confirm that the area under the line is equal to one:
-        var totalArea = 0;
-        for (let i = 0; i < numPoints - 1; i++) {
-          var p1 = linePoints[i];
-          var p2 = linePoints[i + 1];
-          var dx = p2.p - p1.p;
-          var y1 = p1.y;
-          var y2 = p2.y;
-          var dy = y2 - y1;
-          var area = dx * (y1 + dy / 2);
-          totalArea += area;
-        }
-        console.log("total area under line: " + totalArea);
-
     };
 
     function createDHist() {
