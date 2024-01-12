@@ -21,6 +21,7 @@ Then clone this repo and `cd` into the directory. In one stroke:
 
 ```
 brew install zig
+rm -rf ~/.cache/zig
 git clone https://github.com/alecstein/ergsim.git
 cd ergsim
 zig build -Drelease
