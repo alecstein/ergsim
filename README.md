@@ -21,11 +21,25 @@ Then clone this repo and `cd` into the directory. In one stroke:
 
 ```
 brew install zig
-rm -rf ~/.cache/zig
 git clone https://github.com/alecstein/ergsim.git
 cd ergsim
 zig build -Drelease
 ```
+
+Note: if you get an error about the has upon building, this is a bug with the zig package manager. They're fixing it but here's a workaround.
+
+#### Workaround 1
+1. Delete the entire repo
+2. `rm -rf ~/.cache/zig`
+3. Follow the steps above
+
+#### Workaround 2
+1. `rm -rf ~/.cache/zig`
+1. Open up `build.zig.zon`
+3. Comment out the entire line with the hash in it
+4. Run `zig build -Drelease`. This will output a (different) hash
+5. Copy and paste that new hash back where the old hash was in `build.zig.zon`
+6. Uncomment that line and run `zig build -Drelease`
 
 Then to run the simulation,
 
