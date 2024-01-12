@@ -24,24 +24,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // const exe_grav = b.addExecutable(.{
-    //     .name = "ergsim_gravity",
-    //     // In this case the main source file is merely a path, however, in more
-    //     // complicated build scripts, this could be a generated file.
-    //     .root_source_file = .{ .path = "src/main_grav.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-
-    // const vis = b.addExecutable(.{
-    //     .name = "vis",
-    //     // In this case the main source file is merely a path, however, in more
-    //     // complicated build scripts, this could be a generated file.
-    //     .root_source_file = .{ .path = "src/vis.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-
     const zig_webui = b.dependency("zig-webui", .{
         .target = target,
         .optimize = optimize,
