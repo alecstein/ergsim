@@ -30,7 +30,7 @@ Then to run the simulation,
 
 `./zig-out/bin/vis <number-of-particles>`
 
-https://github.com/alecstein/ergsim/assets/16236421/8d250379-dfd1-4092-82fc-6ace1afd737f
+https://github.com/alecstein/ergsim/assets/16236421/431e808b-3be6-4a03-b814-9a7a5ddd9a1d
 
 ### Diary
 
@@ -66,3 +66,11 @@ https://github.com/alecstein/ergsim/assets/16236421/8d250379-dfd1-4092-82fc-6ace
 * Rewrote using zig-webui. Kinda weird and annoying to use, but we have liftoff. Total freedom from python and matplotlib
 * Running this is as simple as doing `vis <particle number>` and letting 'er rip
 * Archived old visuals [here](https://github.com/alecstein/phys/assets/16236421/cc232826-662c-405e-bda4-f017c42fab71) and [here](https://github.com/alecstein/phys/assets/16236421/e56aa705-617d-4697-a1a9-e7163f423df2)
+
+
+#### Jan. 10
+
+* Figured out D3.js and rewrote the visualization to be a little nicer. Lots of potential there. We can move stuff around now
+* Rewrote the simulation in terms of a single parameter, mu
+* Removed some code
+* Cache old [visuals](https://github.com/alecstein/ergsim/assets/16236421/8d250379-dfd1-4092-82fc-6ace1afd737f)
